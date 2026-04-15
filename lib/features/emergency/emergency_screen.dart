@@ -15,7 +15,7 @@ import 'emergency_provider.dart';
 import '../settings/settings_provider.dart';
 
 class EmergencyScreen extends ConsumerStatefulWidget {
-  const EmergencyScreen({Key? key}) : super(key: key);
+  const EmergencyScreen({super.key});
 
   @override
   ConsumerState<EmergencyScreen> createState() => _EmergencyScreenState();
@@ -91,7 +91,53 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
 
             SizedBox(height: 24.h),
 
-            // SOS Button with pulse
+            // Status Card
+            Container(
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                color: AppColors.teal.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(
+                  color: AppColors.teal,
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    color: AppColors.teal,
+                    size: 20.sp,
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ready to send emergency alert',
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: AppColors.teal,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 4.h),
+                        Text(
+                          emergencyState.currentLocation != null
+                              ? '📍 Location ready ${emergencyState.isLocationAccurate ? '🟢 (Accurate)' : '🟡 (Approximate)'}'
+                              : '📡 Getting location...',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(height: 24.h),
             _buildPulsingSosButton(context, ref),
 
             SizedBox(height: 32.h),
@@ -150,7 +196,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                                 padding: EdgeInsets.symmetric(
                                     horizontal: 8.w, vertical: 2.h),
                                 decoration: BoxDecoration(
-                                  color: Color(0xFFFFA500).withOpacity(0.2),
+                                  color: Color(0xFFFFA500).withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(4.r),
                                 ),
                                 child: Text(
@@ -164,8 +210,8 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                                     horizontal: 8.w, vertical: 2.h),
                                 decoration: BoxDecoration(
                                   color: emergencyState.isLocationAccurate
-                                      ? Color(0xFF4CAF50).withOpacity(0.2)
-                                      : Color(0xFFFFA500).withOpacity(0.2),
+                                      ? Color(0xFF4CAF50).withValues(alpha: 0.2)
+                                      : Color(0xFFFFA500).withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(4.r),
                                 ),
                                 child: Text(
@@ -281,12 +327,36 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'EMERGENCY: I am deaf and need immediate help.',
+                    'EMERGENCY',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  Text(
+                    'I need help.',
                     style: AppTextStyles.bodySmall,
                   ),
                   SizedBox(height: 8.h),
                   Text(
-                    'My location: ${emergencyState.currentLocation != null ? (emergencyState.currentLocation!.address?.isNotEmpty == true ? emergencyState.currentLocation!.address! : '${emergencyState.currentLocation!.latitude.toStringAsFixed(4)}, ${emergencyState.currentLocation!.longitude.toStringAsFixed(4)}') : AppConstants.defaultLocationText}',
+                    'I use Ugandan Sign Language (UgSL) and may not hear spoken communication.',
+                    style: AppTextStyles.bodySmall,
+                  ),
+                  SizedBox(height: 8.h),
+                  Text(
+                    'My location: ${emergencyState.currentLocation?.address?.isNotEmpty == true ? emergencyState.currentLocation!.address! : 'Unknown location'}',
+                    style: AppTextStyles.bodySmall,
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    emergencyState.currentLocation != null
+                        ? 'GPS: ${emergencyState.currentLocation!.latitude.toStringAsFixed(4)}, ${emergencyState.currentLocation!.longitude.toStringAsFixed(4)}'
+                        : 'GPS: Unknown',
+                    style: AppTextStyles.bodySmall,
+                  ),
+                  SizedBox(height: 8.h),
+                  Text(
+                    'Please assist me or contact my emergency contact.',
                     style: AppTextStyles.bodySmall,
                   ),
                   SizedBox(height: 8.h),
@@ -295,6 +365,27 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                     style: AppTextStyles.caption,
                   ),
                 ],
+              ),
+            ),
+
+            SizedBox(height: 40.h),
+
+            // Privacy Notice
+            Container(
+              padding: EdgeInsets.all(12.w),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(8.r),
+                border: Border.all(
+                  color: AppColors.border,
+                ),
+              ),
+              child: Text(
+                '🔒 Your location is only used during emergencies. We do not track you continuously.',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textMuted,
+                ),
+                textAlign: TextAlign.center,
               ),
             ),
 
@@ -390,14 +481,20 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
         }
       }
 
-      // Prepare location text
-      final locationText = _buildLocationText(currentLocation);
+      // Prepare location text and coordinates
+      final address = currentLocation?.address?.isNotEmpty == true 
+          ? currentLocation!.address! 
+          : 'Unknown location';
+      final coordinates = currentLocation != null
+          ? '${currentLocation.latitude.toStringAsFixed(4)}, ${currentLocation.longitude.toStringAsFixed(4)}'
+          : 'Unknown';
 
       // IMMEDIATE SOS SEND
       await _sendSmsMessage(
         context,
         emContactNumber,
-        locationText,
+        address,
+        coordinates,
         emergencyNotifier,
       );
 
@@ -414,8 +511,9 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.tr('sos_sent')),
-            backgroundColor: AppColors.red,
+            content: Text('✅ Emergency alert sent to ${emContactNumber.split(' ').last}'),
+            backgroundColor: Color(0xFF4CAF50),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -440,26 +538,16 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     }
   }
 
-  /// Build human-readable location text from CachedLocation
-  String _buildLocationText(CachedLocation? location) {
-    if (location == null) {
-      return AppConstants.defaultLocationText;
-    }
-    if (location.address?.isNotEmpty == true) {
-      return location.address!;
-    }
-    return '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}';
-  }
-
-  /// Send SMS with location information
+  /// Build human-readable location text from CachedLocation (includes both address and coordinates)
   Future<void> _sendSmsMessage(
     BuildContext context,
     String phoneNumber,
-    String locationText,
+    String address,
+    String coordinates,
     EmergencyNotifier notifier,
   ) async {
     final message =
-        'EMERGENCY: I am deaf and need immediate help. My location: $locationText — SilentHelp';
+        'EMERGENCY\n\nI need help.\n\nI use Ugandan Sign Language (UgSL) and may not hear spoken communication.\n\nMy location: $address\nGPS: $coordinates\n\nPlease assist me or contact my emergency contact.\n\n— SilentHelp';
 
     try {
       final Uri smsUri = Uri(
@@ -474,6 +562,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
         throw 'Could not launch SMS';
       }
     } catch (e) {
+      // ignore: avoid_print
       print('SMS send error: $e');
       rethrow;
     }
@@ -486,6 +575,15 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     String emContactNumber,
     CachedLocation? originalLocation,
   ) {
+    // Show status that we're improving location
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('📡 Improving location accuracy...'),
+        backgroundColor: Color(0xFFFFA500),
+        duration: const Duration(seconds: 5),
+      ),
+    );
+
     // Run in background without blocking UI
     Future.delayed(const Duration(milliseconds: 500)).then((_) async {
       try {
@@ -525,18 +623,38 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
               .setLocationLoading(false);
 
           // Try to send updated SOS
-          final updatedLocationText = _buildLocationText(cachedLocation);
-          await _sendSmsMessage(
-            context,
-            emContactNumber,
-            updatedLocationText,
-            ref.read(emergencyProvider.notifier),
-          );
+          final updatedAddress = cachedLocation.address?.isNotEmpty == true
+              ? cachedLocation.address!
+              : 'Unknown location';
+          final updatedCoordinates =
+              '${cachedLocation.latitude.toStringAsFixed(4)}, ${cachedLocation.longitude.toStringAsFixed(4)}';
+          
+          if (mounted) {
+            await _sendSmsMessage(
+              context,
+              emContactNumber,
+              updatedAddress,
+              updatedCoordinates,
+              ref.read(emergencyProvider.notifier),
+            );
 
+            // Show success message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                    '🟢 Updated location sent (${betterLocation.accuracy.toStringAsFixed(0)}m accuracy)'),
+                backgroundColor: Color(0xFF4CAF50),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+
+          // ignore: avoid_print
           print(
               'Background: Sent updated SOS with better location (${betterLocation.accuracy.toStringAsFixed(0)}m)');
         }
       } catch (e) {
+        // ignore: avoid_print
         print('Background location improvement failed: $e');
         // Silently fail - don't disturb user
       }

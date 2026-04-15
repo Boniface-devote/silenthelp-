@@ -235,7 +235,63 @@ class IdCardScreen extends ConsumerWidget {
 
                               SizedBox(height: 24.h),
 
-                              // Contact Info - Two columns
+                              // CRITICAL: Communication Info (UgSL)
+                              Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.all(16.w),
+                                decoration: BoxDecoration(
+                                  color: AppColors.teal.withOpacity(0.1),
+                                  border: Border.all(
+                                    color: AppColors.teal,
+                                    width: 2,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12.r),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'I use Ugandan Sign Language (UgSL)',
+                                      style: AppTextStyles.bodySmall.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.teal,
+                                      ),
+                                    ),
+                                    SizedBox(height: 12.h),
+                                    Text(
+                                      'Please communicate by:',
+                                      style: AppTextStyles.caption.copyWith(
+                                        color: AppColors.textMuted,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    SizedBox(height: 8.h),
+                                    _buildCommunicationMethod('✏️ Writing'),
+                                    SizedBox(height: 6.h),
+                                    _buildCommunicationMethod('💬 Text message'),
+                                    SizedBox(height: 6.h),
+                                    _buildCommunicationMethod('🤷 Simple gestures'),
+                                  ],
+                                ),
+                              ),
+
+                              SizedBox(height: 24.h),
+
+                              // Divider with accent
+                              Container(
+                                height: 2,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppColors.border,
+                                      AppColors.teal.withOpacity(0.3),
+                                      AppColors.border,
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              SizedBox(height: 24.h),
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -479,6 +535,18 @@ class IdCardScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildCommunicationMethod(String method) {
+    return Padding(
+      padding: EdgeInsets.only(left: 8.w),
+      child: Text(
+        method,
+        style: AppTextStyles.bodySmall.copyWith(
+          color: AppColors.textSecondary,
+        ),
+      ),
+    );
+  }
+
   Widget _buildCardField(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -499,13 +567,24 @@ class IdCardScreen extends ConsumerWidget {
   Future<void> _shareViaSMS(
       BuildContext context, UserProfile profile) async {
     final message = '''
-SilentHelp Profile Card:
-Name: ${profile.name}
-Condition: ${profile.condition}
+PROFILE CARD — ${profile.name.toUpperCase()}
+
+I use Ugandan Sign Language (UgSL)
+Please communicate by:
+✏️ Writing
+💬 Text message
+🤷 Simple gestures
+
+Emergency Contact:
+${profile.emContactName} — ${profile.emContactNumber}
+
 Phone: ${profile.phone}
 Blood Type: ${profile.bloodType}
-Medical Note: ${profile.medicalNote}
-Emergency Contact: ${profile.emContactName} (${profile.emContactNumber})
+Condition: ${profile.condition}
+
+${profile.medicalNote.isNotEmpty ? 'Medical Note: ${profile.medicalNote}' : ''}
+
+– SilentHelp
     ''';
 
     final Uri smsUri = Uri(

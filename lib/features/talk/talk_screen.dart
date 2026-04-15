@@ -291,6 +291,15 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
 
             SizedBox(height: 32.h),
 
+            // Type What You Want to Say - Label
+            Text(
+              'Type what you want to say:',
+              style: AppTextStyles.labelSmall.copyWith(
+                color: AppColors.textMuted,
+              ),
+            ),
+            SizedBox(height: 8.h),
+
             // Text Input & Buttons
             Row(
               children: [
@@ -378,10 +387,108 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
               ],
             ),
 
+            SizedBox(height: 20.h),
+
+            // Show Full Screen Message Button
+            if (talkState.userReply.isNotEmpty)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.teal,
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                  ),
+                  onPressed: () {
+                    _showFullScreenMessage(context, talkState.userReply);
+                  },
+                  child: Text(
+                    '📱 Show Full Screen Message',
+                    style: AppTextStyles.buttonLarge.copyWith(
+                      color: AppColors.background,
+                    ),
+                  ),
+                ),
+              ),
+
             SizedBox(height: 40.h),
           ],
         ),
       ),
+    );
+  }
+
+  void _showFullScreenMessage(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.zero,
+          child: Container(
+            color: AppColors.background,
+            child: Column(
+              children: [
+                // Close button
+                Padding(
+                  padding: EdgeInsets.all(16.w),
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40.w,
+                        height: 40.w,
+                        decoration: BoxDecoration(
+                          color: AppColors.card,
+                          borderRadius: BorderRadius.circular(20.r),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Icon(
+                          Icons.close,
+                          color: AppColors.textPrimary,
+                          size: 20.sp,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Full Screen Message
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(40.w),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            message,
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.heading1.copyWith(
+                              fontSize: 60.sp,
+                              fontWeight: FontWeight.w600,
+                              height: 1.3,
+                            ),
+                          ),
+                          SizedBox(height: 40.h),
+                          Text(
+                            '← Swipe or tap to close',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
