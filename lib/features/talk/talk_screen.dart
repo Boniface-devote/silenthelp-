@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -70,11 +71,19 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
     if (!_speechToText.isListening) {
       bool available = await _speechToText.initialize();
       if (available) {
+        // Vibration feedback when starting to listen
+        HapticFeedback.lightImpact();
+        
         ref.read(talkProvider.notifier).setIsListening(true);
         _speechToText.listen(
           onResult: (result) {
             ref.read(talkProvider.notifier)
                 .setTranscribedText(result.recognizedWords);
+            
+            // Vibration feedback when speech is detected
+            if (result.recognizedWords.isNotEmpty) {
+              HapticFeedback.mediumImpact();
+            }
           },
         );
       }
@@ -84,6 +93,9 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
   }
 
   void _stopListening() {
+    // Vibration feedback when stopping listening
+    HapticFeedback.lightImpact();
+    
     _speechToText.stop();
     ref.read(talkProvider.notifier).setIsListening(false);
   }

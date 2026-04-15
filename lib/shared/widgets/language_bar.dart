@@ -4,7 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../providers/locale_provider.dart';
+import '../../core/providers/locale_provider.dart';
 
 class LanguageBar extends ConsumerWidget {
   const LanguageBar({Key? key}) : super(key: key);
@@ -32,8 +32,7 @@ class LanguageBar extends ConsumerWidget {
                 label: 'EN',
                 isActive: currentLocale.languageCode == 'en',
                 onTap: () {
-                  ref.read(localeProvider.notifier).state =
-                      const Locale('en');
+                  ref.read(localeProvider.notifier).state = const Locale('en');
                   context.setLocale(const Locale('en'));
                 },
               ),
@@ -42,8 +41,7 @@ class LanguageBar extends ConsumerWidget {
                 label: 'SW',
                 isActive: currentLocale.languageCode == 'sw',
                 onTap: () {
-                  ref.read(localeProvider.notifier).state =
-                      const Locale('sw');
+                  ref.read(localeProvider.notifier).state = const Locale('sw');
                   context.setLocale(const Locale('sw'));
                 },
               ),
@@ -52,8 +50,7 @@ class LanguageBar extends ConsumerWidget {
                 label: 'LG',
                 isActive: currentLocale.languageCode == 'lg',
                 onTap: () {
-                  ref.read(localeProvider.notifier).state =
-                      const Locale('lg');
+                  ref.read(localeProvider.notifier).state = const Locale('lg');
                   context.setLocale(const Locale('lg'));
                 },
               ),

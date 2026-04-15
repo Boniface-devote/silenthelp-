@@ -10,6 +10,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import '../../shared/widgets/language_bar.dart';
 import '../../shared/widgets/contact_row.dart';
+import '../../core/services/location_service.dart';
 import 'emergency_provider.dart';
 import '../settings/settings_provider.dart';
 
@@ -31,6 +32,13 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..repeat();
+
+    // Load cached location on screen open
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(emergencyProvider.notifier).loadCachedLocation();
+      // Start background location refresh in parallel
+      ref.read(emergencyProvider.notifier).refreshLocationBackground();
+    });
   }
 
   @override
@@ -88,7 +96,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
 
             SizedBox(height: 32.h),
 
-            // GPS Info Row
+            // GPS Info Row with Status Indicator
             Container(
               padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
@@ -98,29 +106,119 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.location_on,
-                    color: Color(0xFF4CAF50),
-                    size: 24.sp,
-                  ),
+                  // Status Indicator
+                  if (emergencyState.isLocationLoading)
+                    SizedBox(
+                      width: 24.sp,
+                      height: 24.sp,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(Color(0xFFFFA500)),
+                      ),
+                    )
+                  else if (emergencyState.currentLocation != null)
+                    Icon(
+                      Icons.location_on,
+                      color: emergencyState.isLocationAccurate
+                          ? Color(0xFF4CAF50) // 🟢 Green for accurate
+                          : Color(0xFFFFA500), // 🟡 Orange for approximate
+                      size: 24.sp,
+                    )
+                  else
+                    Icon(
+                      Icons.location_off,
+                      color: Color(0xFFFF5252), // 🔴 Red for unavailable
+                      size: 24.sp,
+                    ),
                   SizedBox(width: 12.w),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          context.tr('gps_lbl'),
-                          style: AppTextStyles.labelSmall.copyWith(
-                            color: AppColors.textMuted,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              context.tr('gps_lbl'),
+                              style: AppTextStyles.labelSmall.copyWith(
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                            SizedBox(width: 8.w),
+                            // Status badge
+                            if (emergencyState.isLocationLoading)
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 8.w, vertical: 2.h),
+                                decoration: BoxDecoration(
+                                  color: Color(0xFFFFA500).withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(4.r),
+                                ),
+                                child: Text(
+                                  '📡',
+                                  style: AppTextStyles.caption,
+                                ),
+                              )
+                            else if (emergencyState.currentLocation != null)
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 8.w, vertical: 2.h),
+                                decoration: BoxDecoration(
+                                  color: emergencyState.isLocationAccurate
+                                      ? Color(0xFF4CAF50).withOpacity(0.2)
+                                      : Color(0xFFFFA500).withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(4.r),
+                                ),
+                                child: Text(
+                                  emergencyState.isLocationAccurate
+                                      ? '🟢'
+                                      : '🟡',
+                                  style: AppTextStyles.caption,
+                                ),
+                              ),
+                          ],
                         ),
                         SizedBox(height: 4.h),
-                        Text(
-                          emergencyState.currentPosition != null
-                              ? '${emergencyState.currentPosition!.latitude.toStringAsFixed(4)}, ${emergencyState.currentPosition!.longitude.toStringAsFixed(4)}'
-                              : AppConstants.defaultLocationText,
-                          style: AppTextStyles.bodySmall,
-                        ),
+                        // Show location name if available, otherwise coordinates
+                        if (emergencyState.currentLocation != null)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (emergencyState.currentLocation!.address !=
+                                  null)
+                                Text(
+                                  emergencyState.currentLocation!.address!,
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              if (emergencyState.currentLocation!.address !=
+                                  null)
+                                SizedBox(height: 4.h),
+                              Text(
+                                '${emergencyState.currentLocation!.latitude.toStringAsFixed(4)}, ${emergencyState.currentLocation!.longitude.toStringAsFixed(4)}',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                              SizedBox(height: 2.h),
+                              Text(
+                                'Accuracy: ${emergencyState.currentLocation!.accuracy.toStringAsFixed(0)}m',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.textMuted,
+                                  fontSize: 10.sp,
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          Text(
+                            emergencyState.isLocationLoading
+                                ? '📡 Getting your location...'
+                                : AppConstants.defaultLocationText,
+                            style: AppTextStyles.bodySmall,
+                          ),
                       ],
                     ),
                   ),
@@ -188,7 +286,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                   ),
                   SizedBox(height: 8.h),
                   Text(
-                    'My location: ${emergencyState.currentPosition != null ? '${emergencyState.currentPosition!.latitude.toStringAsFixed(4)}, ${emergencyState.currentPosition!.longitude.toStringAsFixed(4)}' : AppConstants.defaultLocationText}',
+                    'My location: ${emergencyState.currentLocation != null ? (emergencyState.currentLocation!.address?.isNotEmpty == true ? emergencyState.currentLocation!.address! : '${emergencyState.currentLocation!.latitude.toStringAsFixed(4)}, ${emergencyState.currentLocation!.longitude.toStringAsFixed(4)}') : AppConstants.defaultLocationText}',
                     style: AppTextStyles.bodySmall,
                   ),
                   SizedBox(height: 8.h),
@@ -246,94 +344,203 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
   }
 
   Future<void> _sendSOS(BuildContext context, WidgetRef ref) async {
-    HapticFeedback.mediumImpact();
+    // Initial vibration feedback when SOS button is pressed
+    HapticFeedback.heavyImpact();
 
     ref.read(emergencyProvider.notifier).setSendingSos(true);
 
     try {
-      // Get current position
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
-      ).timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => Position(
-          latitude: 0.3,
-          longitude: 32.6,
-          timestamp: DateTime.now(),
-          accuracy: 0,
-          altitude: 0,
-          heading: 0,
-          speed: 0,
-          speedAccuracy: 0,
-          altitudeAccuracy: 0,
-          headingAccuracy: 0,
-        ),
-      );
-
-      ref.read(emergencyProvider.notifier).setPosition(position);
-
-      // Get emergency contact
+      final emergencyNotifier = ref.read(emergencyProvider.notifier);
       final profileAsync = ref.read(settingsProvider);
       String emContactNumber = '+256 700 123 456';
-      
+
+      // Get emergency contact
       profileAsync.whenData((profile) {
         emContactNumber = profile.emContactNumber;
       });
 
-      // Compose message
-      final locationText =
-          '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
-      final message =
-          'EMERGENCY: I am deaf and need immediate help. My location: $locationText — SilentHelp';
+      // Strategy: Send immediately with cached location, then improve in background
+      CachedLocation? currentLocation =
+          ref.read(emergencyProvider).currentLocation;
 
-      // Try to send SMS
-      try {
-        final Uri smsUri = Uri(
-          scheme: 'sms',
-          path: emContactNumber,
-          queryParameters: {'body': message},
-        );
-
-        if (await canLaunchUrl(smsUri)) {
-          await launchUrl(smsUri);
-          ref.read(emergencyProvider.notifier).setSosSent(true);
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(context.tr('sos_sent')),
-                backgroundColor: AppColors.red,
-              ),
-            );
-          }
+      // If no cached location, try to fetch it now
+      if (currentLocation == null) {
+        currentLocation = await LocationService.getCachedLocation();
+        if (currentLocation != null) {
+          emergencyNotifier.loadCachedLocation();
         } else {
-          throw 'Could not launch SMS';
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context
-                  .tr('sos_failed')
-                  .replaceFirst('{num}', emContactNumber)),
-              backgroundColor: AppColors.red,
-              duration: const Duration(seconds: 4),
-            ),
+          // Fallback: Quick location fetch
+          currentLocation = await LocationService.getFullLocation(
+            highAccuracy: false,
           );
+          if (currentLocation != null) {
+            emergencyNotifier.setPosition(Position(
+              latitude: currentLocation.latitude,
+              longitude: currentLocation.longitude,
+              timestamp: DateTime.now(),
+              accuracy: currentLocation.accuracy,
+              altitude: 0,
+              altitudeAccuracy: 0,
+              heading: 0,
+              headingAccuracy: 0,
+              speed: 0,
+              speedAccuracy: 0,
+            ));
+          }
         }
       }
+
+      // Prepare location text
+      final locationText = _buildLocationText(currentLocation);
+
+      // IMMEDIATE SOS SEND
+      await _sendSmsMessage(
+        context,
+        emContactNumber,
+        locationText,
+        emergencyNotifier,
+      );
+
+      // SUCCESS: Send SOS was successful
+      ref.read(emergencyProvider.notifier).setSosSent(true);
+
+      // Success vibration pattern: rapid pulses
+      await HapticFeedback.mediumImpact();
+      await Future.delayed(const Duration(milliseconds: 100));
+      await HapticFeedback.mediumImpact();
+      await Future.delayed(const Duration(milliseconds: 100));
+      await HapticFeedback.heavyImpact();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr('sos_sent')),
+            backgroundColor: AppColors.red,
+          ),
+        );
+      }
+
+      // BACKGROUND: Try to get better location and send updated SOS
+      _improveLocationInBackground(context, ref, emContactNumber, currentLocation);
     } catch (e) {
+      // Error vibration
+      HapticFeedback.selectionClick();
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: $e'),
             backgroundColor: AppColors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
     } finally {
       ref.read(emergencyProvider.notifier).setSendingSos(false);
     }
+  }
+
+  /// Build human-readable location text from CachedLocation
+  String _buildLocationText(CachedLocation? location) {
+    if (location == null) {
+      return AppConstants.defaultLocationText;
+    }
+    if (location.address?.isNotEmpty == true) {
+      return location.address!;
+    }
+    return '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}';
+  }
+
+  /// Send SMS with location information
+  Future<void> _sendSmsMessage(
+    BuildContext context,
+    String phoneNumber,
+    String locationText,
+    EmergencyNotifier notifier,
+  ) async {
+    final message =
+        'EMERGENCY: I am deaf and need immediate help. My location: $locationText — SilentHelp';
+
+    try {
+      final Uri smsUri = Uri(
+        scheme: 'sms',
+        path: phoneNumber,
+        queryParameters: {'body': message},
+      );
+
+      if (await canLaunchUrl(smsUri)) {
+        await launchUrl(smsUri);
+      } else {
+        throw 'Could not launch SMS';
+      }
+    } catch (e) {
+      print('SMS send error: $e');
+      rethrow;
+    }
+  }
+
+  /// Background task: Try to get better accuracy location and send updated SOS
+  void _improveLocationInBackground(
+    BuildContext context,
+    WidgetRef ref,
+    String emContactNumber,
+    CachedLocation? originalLocation,
+  ) {
+    // Run in background without blocking UI
+    Future.delayed(const Duration(milliseconds: 500)).then((_) async {
+      try {
+        final betterLocation =
+            await LocationService.getHighAccuracyLocation();
+
+        if (betterLocation != null &&
+            betterLocation.accuracy <
+                (originalLocation?.accuracy ?? 1000)) {
+          // We got a better location, update the cache and send updated SOS
+          final cachedLocation = CachedLocation(
+            latitude: betterLocation.latitude,
+            longitude: betterLocation.longitude,
+            accuracy: betterLocation.accuracy,
+            address: originalLocation?.address,
+            timestamp: DateTime.now(),
+          );
+
+          // Update UI
+          ref
+              .read(emergencyProvider.notifier)
+              .setPosition(Position(
+                latitude: betterLocation.latitude,
+                longitude: betterLocation.longitude,
+                timestamp: DateTime.now(),
+                accuracy: betterLocation.accuracy,
+                altitude: 0,
+                altitudeAccuracy: 0,
+                heading: 0,
+                headingAccuracy: 0,
+                speed: 0,
+                speedAccuracy: 0,
+              ));
+
+          ref
+              .read(emergencyProvider.notifier)
+              .setLocationLoading(false);
+
+          // Try to send updated SOS
+          final updatedLocationText = _buildLocationText(cachedLocation);
+          await _sendSmsMessage(
+            context,
+            emContactNumber,
+            updatedLocationText,
+            ref.read(emergencyProvider.notifier),
+          );
+
+          print(
+              'Background: Sent updated SOS with better location (${betterLocation.accuracy.toStringAsFixed(0)}m)');
+        }
+      } catch (e) {
+        print('Background location improvement failed: $e');
+        // Silently fail - don't disturb user
+      }
+    });
   }
 
   Future<void> _makeCall(String number) async {

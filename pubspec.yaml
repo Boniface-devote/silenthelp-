@@ -19,6 +19,7 @@ dependencies:
   easy_localization: ^3.0.8
   intl: ^0.20.2
   geolocator: ^14.0.2
+  geocoding: ^3.0.0
   permission_handler: ^11.3.1
   speech_to_text: ^7.3.0
   flutter_tts: ^4.2.5

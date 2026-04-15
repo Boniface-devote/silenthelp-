@@ -42,98 +42,325 @@ class IdCardScreen extends ConsumerWidget {
             profileAsync.when(
               data: (profile) => Column(
                 children: [
-                  // Card Display
+                  // Professional ID Card
                   Container(
-                    padding: EdgeInsets.all(20.w),
                     decoration: BoxDecoration(
-                      color: AppColors.card,
-                      borderRadius: BorderRadius.circular(16.r),
-                      border: Border.all(
-                        color: AppColors.teal,
-                        width: 2,
-                      ),
+                      borderRadius: BorderRadius.circular(20.r),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.teal.withOpacity(0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
                     ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Top row with avatar and name
-                        Row(
-                          children: [
-                            // Avatar
-                            Container(
-                              width: 60.w,
-                              height: 60.w,
-                              decoration: BoxDecoration(
-                                color: AppColors.tealDark,
-                                borderRadius: BorderRadius.circular(12.r),
-                              ),
-                              child: Icon(
-                                Icons.person,
-                                color: AppColors.teal,
-                                size: 32.sp,
-                              ),
+                        // Header Bar - Teal with title
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(16.w),
+                          decoration: BoxDecoration(
+                            color: AppColors.teal,
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(20.r),
+                              topRight: Radius.circular(20.r),
                             ),
-                            SizedBox(width: 16.w),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'SilentHelp',
+                                style: AppTextStyles.labelLarge.copyWith(
+                                  color: AppColors.background,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                context.tr('medical_id'),
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.background,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Main Card Content
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(24.w),
+                          color: AppColors.card,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Name and Avatar Section
+                              Row(
                                 children: [
-                                  Text(
-                                    profile.name,
-                                    style: AppTextStyles.heading3,
-                                  ),
-                                  SizedBox(height: 4.h),
+                                  // Large Avatar
                                   Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 8.w,
-                                      vertical: 4.h,
-                                    ),
+                                    width: 80.w,
+                                    height: 80.w,
                                     decoration: BoxDecoration(
+                                      color: AppColors.tealDark,
+                                      borderRadius: BorderRadius.circular(16.r),
                                       border: Border.all(
                                         color: AppColors.teal,
+                                        width: 2,
                                       ),
-                                      borderRadius: BorderRadius.circular(4.r),
                                     ),
-                                    child: Text(
-                                      context.tr('id_cond'),
-                                      style:
-                                          AppTextStyles.labelSmall.copyWith(
-                                        color: AppColors.teal,
-                                      ),
+                                    child: Icon(
+                                      Icons.person,
+                                      color: AppColors.teal,
+                                      size: 40.sp,
+                                    ),
+                                  ),
+                                  SizedBox(width: 20.w),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          profile.name.toUpperCase(),
+                                          style:
+                                              AppTextStyles.heading2.copyWith(
+                                            color: AppColors.textPrimary,
+                                            letterSpacing: 1,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        SizedBox(height: 8.h),
+                                        // Condition Badge and Blood Type on same line
+                                        Row(
+                                          children: [
+                                            // Condition Badge
+                                            Expanded(
+                                              child: Container(
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 12.w,
+                                                  vertical: 6.h,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.blue
+                                                      .withOpacity(0.15),
+                                                  border: Border.all(
+                                                    color: AppColors.blue,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8.r),
+                                                ),
+                                                child: Text(
+                                                  profile.condition.isEmpty
+                                                      ? context.tr('id_cond')
+                                                      : profile.condition,
+                                                  style: AppTextStyles.caption
+                                                      .copyWith(
+                                                    color: AppColors.blue,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(width: 8.w),
+                                            // Blood Type Badge
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 10.w,
+                                                vertical: 6.h,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.red
+                                                    .withOpacity(0.1),
+                                                border: Border.all(
+                                                  color: AppColors.red,
+                                                  width: 2,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(8.r),
+                                              ),
+                                              child: Column(
+                                                children: [
+                                                  Text(
+                                                    context.tr('blood_key'),
+                                                    style: AppTextStyles
+                                                        .caption
+                                                        .copyWith(
+                                                      color:
+                                                          AppColors.textMuted,
+                                                      fontSize: 8.sp,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    profile.bloodType.isEmpty
+                                                        ? 'N/A'
+                                                        : profile.bloodType,
+                                                    style: AppTextStyles
+                                                        .heading3
+                                                        .copyWith(
+                                                      color: AppColors.red,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
+
+                              SizedBox(height: 24.h),
+
+                              // Divider with accent
+                              Container(
+                                height: 2,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppColors.border,
+                                      AppColors.teal.withOpacity(0.3),
+                                      AppColors.border,
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              SizedBox(height: 24.h),
+
+                              // Contact Info - Two columns
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _buildIdField(
+                                          context.tr('phone_key'),
+                                          profile.phone,
+                                          Icons.phone,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(width: 16.w),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _buildIdField(
+                                          context.tr('em_key'),
+                                          profile.emContactName,
+                                          Icons.person_add,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              SizedBox(height: 20.h),
+
+                              // Medical Note
+                              if (profile.medicalNote.isNotEmpty)
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.note_alt,
+                                          color: AppColors.yellow,
+                                          size: 18.sp,
+                                        ),
+                                        SizedBox(width: 8.w),
+                                        Text(
+                                          context.tr('note_key'),
+                                          style:
+                                              AppTextStyles.caption.copyWith(
+                                            color: AppColors.textMuted,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 8.h),
+                                    Container(
+                                      width: double.infinity,
+                                      padding: EdgeInsets.all(12.w),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.yellow
+                                            .withOpacity(0.1),
+                                        border: Border(
+                                          left: BorderSide(
+                                            color: AppColors.yellow,
+                                            width: 3,
+                                          ),
+                                        ),
+                                        borderRadius:
+                                            BorderRadius.circular(8.r),
+                                      ),
+                                      child: Text(
+                                        profile.medicalNote,
+                                        style:
+                                            AppTextStyles.bodySmall.copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                        ),
+
+                        // Footer Bar
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 24.w,
+                            vertical: 12.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.only(
+                              bottomLeft: Radius.circular(20.r),
+                              bottomRight: Radius.circular(20.r),
                             ),
-                          ],
-                        ),
-
-                        SizedBox(height: 20.h),
-
-                        // Divider
-                        Divider(color: AppColors.border),
-
-                        SizedBox(height: 16.h),
-
-                        // Fields
-                        _buildCardField(
-                          context.tr('phone_key'),
-                          profile.phone,
-                        ),
-                        SizedBox(height: 12.h),
-                        _buildCardField(
-                          context.tr('blood_key'),
-                          profile.bloodType,
-                        ),
-                        SizedBox(height: 12.h),
-                        _buildCardField(
-                          context.tr('em_key'),
-                          profile.emContactName,
-                        ),
-                        SizedBox(height: 12.h),
-                        _buildCardField(
-                          context.tr('note_key'),
-                          profile.medicalNote,
+                            border: Border(
+                              top: BorderSide(
+                                color: AppColors.border,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'ID #${profile.name.hashCode.toString().substring(0, 8).toUpperCase()}',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.textMuted,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              Text(
+                                DateTime.now().year.toString(),
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -216,6 +443,39 @@ class IdCardScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildIdField(String label, String value, IconData icon) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              icon,
+              color: AppColors.teal,
+              size: 16.sp,
+            ),
+            SizedBox(width: 6.w),
+            Text(
+              label,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textMuted,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 6.h),
+        Text(
+          value.isEmpty ? '—' : value,
+          style: AppTextStyles.bodySmall.copyWith(
+            color: value.isEmpty ? AppColors.textMuted : AppColors.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
