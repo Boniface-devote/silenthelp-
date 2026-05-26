@@ -31,6 +31,8 @@ dependencies:
   video_player: ^2.7.0
   cupertino_icons: ^1.0.8
 
+
+
 flutter:
   uses-material-design: true
   assets:
@@ -42,3 +44,9 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   build_runner: ^2.4.12
+  flutter_launcher_icons: "^0.14.4"
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/icon.png"

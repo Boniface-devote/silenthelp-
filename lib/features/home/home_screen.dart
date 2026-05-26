@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
-import '../../shared/widgets/language_bar.dart';
 import '../../shared/widgets/feature_card.dart';
 import '../../shared/providers/locale_provider.dart';
 import '../../features/settings/settings_provider.dart';
@@ -73,10 +72,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Language Bar
-              LanguageBar(),
-              
-              SizedBox(height: 24.h),
 
               // Greeting section
               profileAsync.when(

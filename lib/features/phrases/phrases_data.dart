@@ -33,6 +33,18 @@ class PhrasesData {
       'Can you help me find...?|Unaweza kunisaidia kutafuta...?|Oyinza okunsobola okunnsoboza...?',
       'Thank you for your help|Asante kwa msaada wako|Webale ku buyambi bwo',
     ],
+    'office': [
+      'May I speak with...?|Je, naweza kuzungumza na...?|Lwandinza kuzuluza n\'...?',
+      'I have a meeting at...|Nina mkutano saa...|Ndi mu musomo ku saa...',
+      'Where is the meeting room?|Chumba cha mkutano kiko wapi?|Yaka y\'ommusomo kiri wa?',
+      'Can you send me an email?|Unaweza kunipelea barua pepe?|Oyinza okunmala email?',
+      'Can I get a copy of this document?|Naweza kupata nakala ya hii hati?|Nsobola okufuna kopi y\'eddokumenti eno?',
+      'I need technical support|Ninahitaji msaada wa teknolojia|Neetaaga obuyambi bwa tekinoloji',
+      'What time is the meeting?|Mkutano ni saa ngapi?|Ommusomo guli ku saa meka?',
+      'Where is the restroom?|Choo kiko wapi?|Enjaza kiri wa?',
+      'Can I have the Wi-Fi password?|Naweza kupata nenosiri la Wi-Fi?|Nsobola okufuna password ya Wi-Fi?',
+      'Can we reschedule this meeting?|Je, tunaweza kuandika upya mkutano huu?|Tusobola okuddamu timeline y\'ommusomo eno?',
+    ],
   };
 
   static String getPhrase(String category, String language, int index) {

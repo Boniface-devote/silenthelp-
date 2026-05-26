@@ -5,7 +5,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../../shared/widgets/language_bar.dart';
 import '../../shared/widgets/phrase_row.dart';
 import '../../shared/providers/locale_provider.dart';
 import 'phrases_data.dart';
@@ -26,6 +25,7 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
     'daily',
     'medical',
     'shopping',
+    'office',
   ];
 
   final Map<String, Color> _categoryColors = {
@@ -33,6 +33,7 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
     'daily': AppColors.teal,
     'medical': AppColors.blue,
     'shopping': AppColors.yellow,
+    'office': AppColors.purple,
   };
 
   @override
@@ -82,10 +83,6 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Language Bar
-            LanguageBar(),
-
-            SizedBox(height: 24.h),
 
             // Category Tabs
             SingleChildScrollView(

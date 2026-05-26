@@ -7,7 +7,6 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../../shared/widgets/language_bar.dart';
 import 'talk_provider.dart';
 
 class TalkScreen extends ConsumerStatefulWidget {
@@ -127,10 +126,6 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Language Bar
-            LanguageBar(),
-
-            SizedBox(height: 24.h),
 
             // Live Badge
             Container(

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/app_constants.dart';
+import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/emergency/emergency_screen.dart';
 import '../../features/talk/talk_screen.dart';
@@ -10,9 +13,39 @@ import '../../features/learn/learn_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../shared/widgets/bottom_nav.dart';
 
+// Check if onboarding is complete
+Future<bool> _isOnboardingComplete() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getBool('onboarding_complete') ?? false;
+}
+
 final GoRouter appRouter = GoRouter(
   initialLocation: AppConstants.routeHome,
+  redirect: (context, state) async {
+    final isComplete = await _isOnboardingComplete();
+    final isGoingToOnboarding = state.uri.path == '/onboarding';
+    
+    // If onboarding is not complete and not already going to onboarding, redirect
+    if (!isComplete && !isGoingToOnboarding) {
+      return '/onboarding';
+    }
+    
+    // If onboarding is complete and trying to go to onboarding, redirect to home
+    if (isComplete && isGoingToOnboarding) {
+      return AppConstants.routeHome;
+    }
+    
+    return null;
+  },
   routes: [
+    // Onboarding route (outside ShellRoute so no bottom nav)
+    GoRoute(
+      path: '/onboarding',
+      name: 'onboarding',
+      pageBuilder: (context, state) => const NoTransitionPage(
+        child: OnboardingScreen(),
+      ),
+    ),
     ShellRoute(
       builder: (context, state, child) {
         return BottomNavScaffold(

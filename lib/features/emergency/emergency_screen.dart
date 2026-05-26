@@ -5,10 +5,10 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
-import '../../shared/widgets/language_bar.dart';
 import '../../shared/widgets/contact_row.dart';
 import '../../core/services/location_service.dart';
 import 'emergency_provider.dart';
@@ -68,10 +68,6 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Language Bar
-            LanguageBar(),
-
-            SizedBox(height: 24.h),
 
             // Active Badge
             Container(
@@ -397,19 +393,79 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
   }
 
   Widget _buildPulsingSosButton(BuildContext context, WidgetRef ref) {
-    return GestureDetector(
-      onTap: () {
-        _sendSOS(context, ref);
+    final completionAsync = ref.watch(profileCompletionProvider);
+
+    return completionAsync.when(
+      data: (completion) {
+        final isEnabled = completion.isEmergencyContactComplete;
+
+        return GestureDetector(
+          onTap: isEnabled
+              ? () {
+                  _sendSOS(context, ref);
+                }
+              : () {
+                  // Show message prompting to add emergency contact
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        context.tr('complete_required'),
+                      ),
+                      duration: const Duration(seconds: 3),
+                      backgroundColor: AppColors.red,
+                      action: SnackBarAction(
+                        label: 'Go to Settings',
+                        textColor: Colors.white,
+                        onPressed: () {
+                          context.go(AppConstants.routeSettings);
+                        },
+                      ),
+                    ),
+                  );
+                  HapticFeedback.lightImpact();
+                },
+          child: ScaleTransition(
+            scale: Tween(begin: 1.0, end: isEnabled ? 1.03 : 1.0).animate(
+              CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+            ),
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(30.h),
+              decoration: BoxDecoration(
+                color: (isEnabled ? AppColors.red : AppColors.textMuted)
+                    .withValues(alpha: isEnabled ? 1.0 : 0.5),
+                borderRadius: BorderRadius.circular(20.r),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    context.tr('send_sos'),
+                    style: AppTextStyles.heading1.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
+                  Text(
+                    isEnabled
+                        ? context.tr('send_sos_sub')
+                        : context.tr('complete_required'),
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
       },
-      child: ScaleTransition(
-        scale: Tween(begin: 1.0, end: 1.03).animate(
-          CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-        ),
+      loading: () => GestureDetector(
+        onTap: () {},
         child: Container(
           width: double.infinity,
           padding: EdgeInsets.all(30.h),
           decoration: BoxDecoration(
-            color: AppColors.red,
+            color: AppColors.textMuted.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(20.r),
           ),
           child: Column(
@@ -421,13 +477,43 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                 ),
               ),
               SizedBox(height: 12.h),
-              Text(
-                context.tr('send_sos_sub'),
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textPrimary,
-                ),
-              ),
+              const CircularProgressIndicator(),
             ],
+          ),
+        ),
+      ),
+      error: (_, __) => GestureDetector(
+        onTap: () {
+          _sendSOS(context, ref);
+        },
+        child: ScaleTransition(
+          scale: Tween(begin: 1.0, end: 1.03).animate(
+            CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+          ),
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(30.h),
+            decoration: BoxDecoration(
+              color: AppColors.red,
+              borderRadius: BorderRadius.circular(20.r),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  context.tr('send_sos'),
+                  style: AppTextStyles.heading1.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                SizedBox(height: 12.h),
+                Text(
+                  context.tr('send_sos_sub'),
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -489,6 +575,15 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
           ? '${currentLocation.latitude.toStringAsFixed(4)}, ${currentLocation.longitude.toStringAsFixed(4)}'
           : 'Unknown';
 
+      // Log: SOS message prepared
+      await ref.read(sosLogProvider.notifier).addLogEntry(
+            SOSLogEntry(
+              timestamp: DateTime.now(),
+              message: 'To: $emContactNumber | Location: $address',
+              status: 'prepared',
+            ),
+          );
+
       // IMMEDIATE SOS SEND
       await _sendSmsMessage(
         context,
@@ -498,21 +593,28 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
         emergencyNotifier,
       );
 
+      // Log: SOS opened in SMS app
+      await ref.read(sosLogProvider.notifier).addLogEntry(
+            SOSLogEntry(
+              timestamp: DateTime.now(),
+              message: 'To: $emContactNumber | Location: $address',
+              status: 'opened_in_sms',
+            ),
+          );
+
       // SUCCESS: Send SOS was successful
       ref.read(emergencyProvider.notifier).setSosSent(true);
 
-      // Success vibration pattern: rapid pulses
-      await HapticFeedback.mediumImpact();
-      await Future.delayed(const Duration(milliseconds: 100));
-      await HapticFeedback.mediumImpact();
-      await Future.delayed(const Duration(milliseconds: 100));
+      // Strong vibration feedback for SMS confirmation
+      await HapticFeedback.heavyImpact();
+      await Future.delayed(const Duration(milliseconds: 150));
       await HapticFeedback.heavyImpact();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ Emergency alert sent to ${emContactNumber.split(' ').last}'),
-            backgroundColor: Color(0xFF4CAF50),
+            content: Text(context.tr('sos_prepared')),
+            backgroundColor: AppColors.teal,
             duration: const Duration(seconds: 3),
           ),
         );

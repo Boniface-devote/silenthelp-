@@ -90,6 +90,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             
             SizedBox(height: 32.h),
 
+            // Profile Completion Section
+            _buildProfileCompletionWidget(ref),
+
+            SizedBox(height: 32.h),
+
             // Personal Details Section
             Text(
               context.tr('lbl_personal'),
@@ -150,6 +155,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               controller: _emPhoneController,
               label: context.tr('lbl_em_num'),
             ),
+
+            SizedBox(height: 32.h),
+
+            // SOS History Section
+            _buildSOSHistorySection(ref),
 
             SizedBox(height: 32.h),
 
@@ -255,5 +265,413 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         }
       });
     }
+  }
+
+  Widget _buildProfileCompletionWidget(WidgetRef ref) {
+    final completionAsync = ref.watch(profileCompletionProvider);
+
+    return completionAsync.when(
+      data: (completion) {
+        final isIncomplete = completion.completionPercentage < 100;
+        final isEmergencyContactMissing =
+            !completion.isEmergencyContactComplete;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Text(
+              context.tr('profile_completion'),
+              style: AppTextStyles.labelLarge.copyWith(
+                color: AppColors.textMuted,
+              ),
+            ),
+            SizedBox(height: 12.h),
+
+            // Warning if incomplete
+            if (isIncomplete)
+              Container(
+                padding: EdgeInsets.all(12.w),
+                decoration: BoxDecoration(
+                  color: isEmergencyContactMissing
+                      ? AppColors.red.withValues(alpha: 0.15)
+                      : AppColors.yellow.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(
+                    color: isEmergencyContactMissing
+                        ? AppColors.red
+                        : AppColors.yellow,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isEmergencyContactMissing
+                          ? context.tr('incomplete_warning')
+                          : context.tr('profile_instructions'),
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: isEmergencyContactMissing
+                            ? AppColors.red
+                            : AppColors.yellow,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Container(
+                padding: EdgeInsets.all(12.w),
+                decoration: BoxDecoration(
+                  color: AppColors.teal.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: AppColors.teal),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      color: AppColors.teal,
+                      size: 20.sp,
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(
+                      '✓ Profile Complete',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.teal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            SizedBox(height: 12.h),
+
+            // Progress Bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8.r),
+              child: LinearProgressIndicator(
+                value: completion.completionPercentage / 100,
+                minHeight: 8.h,
+                backgroundColor: AppColors.border,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  completion.completionPercentage < 100
+                      ? AppColors.yellow
+                      : AppColors.teal,
+                ),
+              ),
+            ),
+
+            SizedBox(height: 8.h),
+
+            // Percentage Text
+            Text(
+              '${completion.completionPercentage}% Complete',
+              style: AppTextStyles.labelSmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+
+            SizedBox(height: 16.h),
+
+            // Checklist Items
+            _buildChecklistItem(
+              context.tr('completion_step1'),
+              completion.hasName,
+            ),
+            _buildChecklistItem(
+              context.tr('completion_step2'),
+              completion.hasPhone,
+            ),
+            _buildChecklistItem(
+              context.tr('completion_step3'),
+              completion.hasBloodType,
+            ),
+            _buildChecklistItem(
+              context.tr('completion_step4'),
+              completion.hasEmergencyContactName,
+              isRequired: true,
+            ),
+            _buildChecklistItem(
+              context.tr('completion_step5'),
+              completion.hasEmergencyContactNumber,
+              isRequired: true,
+            ),
+          ],
+        );
+      },
+      loading: () => Container(
+        padding: EdgeInsets.all(16.w),
+        child: const CircularProgressIndicator(),
+      ),
+      error: (error, stack) => Text('Error loading profile'),
+    );
+  }
+
+  Widget _buildChecklistItem(
+    String label,
+    bool isComplete, {
+    bool isRequired = false,
+  }) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8.h),
+      child: Row(
+        children: [
+          Container(
+            width: 24.w,
+            height: 24.w,
+            decoration: BoxDecoration(
+              color: isComplete
+                  ? AppColors.teal
+                  : isRequired
+                      ? AppColors.red.withValues(alpha: 0.2)
+                      : AppColors.card,
+              borderRadius: BorderRadius.circular(6.r),
+              border: Border.all(
+                color: isComplete
+                    ? AppColors.teal
+                    : isRequired
+                        ? AppColors.red
+                        : AppColors.border,
+              ),
+            ),
+            child: isComplete
+                ? Icon(
+                    Icons.check,
+                    size: 16.sp,
+                    color: AppColors.background,
+                  )
+                : null,
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Text(
+              label,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: isComplete
+                    ? AppColors.textSecondary
+                    : isRequired
+                        ? AppColors.red
+                        : AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSOSHistorySection(WidgetRef ref) {
+    final sosLogAsync = ref.watch(sosLogProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              context.tr('sos_history'),
+              style: AppTextStyles.labelLarge.copyWith(
+                color: AppColors.textMuted,
+              ),
+            ),
+            // Clear button
+            sosLogAsync.when(
+              data: (logs) {
+                if (logs.isEmpty) {
+                  return SizedBox.shrink();
+                }
+                return GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        backgroundColor: AppColors.card,
+                        title: Text(
+                          context.tr('sos_history'),
+                          style: AppTextStyles.heading3.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        content: Text(
+                          'Clear all SOS history?',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => context.pop(),
+                            child: Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              ref.read(sosLogProvider.notifier).clearLog();
+                              ScaffoldMessenger.of(this.context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    context.tr('sos_history_cleared'),
+                                  ),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                              context.pop();
+                            },
+                            child: Text(
+                              'Clear',
+                              style: TextStyle(color: AppColors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  child: Text(
+                    context.tr('sos_clear_history'),
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: AppColors.red,
+                    ),
+                  ),
+                );
+              },
+              loading: () => SizedBox.shrink(),
+              error: (_, __) => SizedBox.shrink(),
+            ),
+          ],
+        ),
+        SizedBox(height: 12.h),
+
+        // Log List
+        sosLogAsync.when(
+          data: (logs) {
+            if (logs.isEmpty) {
+              return Container(
+                padding: EdgeInsets.all(16.w),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Center(
+                  child: Text(
+                    context.tr('sos_log_empty'),
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            return Container(
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                children: List.generate(
+                  logs.length,
+                  (index) {
+                    final log = logs[logs.length - 1 - index]; // Reverse order (newest first)
+                    return _buildSOSLogItem(log, index == 0, index == logs.length - 1);
+                  },
+                ),
+              ),
+            );
+          },
+          loading: () => Container(
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const CircularProgressIndicator(),
+          ),
+          error: (_, __) => Container(
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Text('Error loading history'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSOSLogItem(SOSLogEntry log, bool isFirst, bool isLast) {
+    final isOpened = log.status == 'opened_in_sms';
+    final formattedDate = '${log.timestamp.month}/${log.timestamp.day}/${log.timestamp.year} ${log.timestamp.hour.toString().padLeft(2, '0')}:${log.timestamp.minute.toString().padLeft(2, '0')}';
+
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.all(12.w),
+          child: Row(
+            children: [
+              // Status icon
+              Container(
+                width: 36.w,
+                height: 36.w,
+                decoration: BoxDecoration(
+                  color: isOpened ? AppColors.teal.withValues(alpha: 0.2) : AppColors.yellow.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Icon(
+                  isOpened ? Icons.check_circle : Icons.schedule,
+                  color: isOpened ? AppColors.teal : AppColors.yellow,
+                  size: 20.sp,
+                ),
+              ),
+              SizedBox(width: 12.w),
+
+              // Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      formattedDate,
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 4.h),
+                    Text(
+                      log.message,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textMuted,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 4.h),
+                    Text(
+                      isOpened ? context.tr('sos_log_opened') : context.tr('sos_log_prepared'),
+                      style: AppTextStyles.caption.copyWith(
+                        color: isOpened ? AppColors.teal : AppColors.yellow,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (!isLast)
+          Divider(
+            height: 1,
+            color: AppColors.border,
+            indent: 12.w,
+            endIndent: 12.w,
+          ),
+      ],
+    );
   }
 }

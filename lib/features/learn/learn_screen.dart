@@ -4,7 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../../shared/widgets/language_bar.dart';
 import '../../shared/widgets/sign_video_player.dart';
 import '../../shared/providers/locale_provider.dart';
 
@@ -112,10 +111,6 @@ class LearnScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Language Bar
-            LanguageBar(),
-
-            SizedBox(height: 24.h),
 
             // Badge
             Container(

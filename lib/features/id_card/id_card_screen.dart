@@ -7,7 +7,6 @@ import 'package:pretty_qr_code/pretty_qr_code.dart';
 import 'dart:convert';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../../shared/widgets/language_bar.dart';
 import '../settings/settings_provider.dart';
 
 class IdCardScreen extends ConsumerWidget {
@@ -33,10 +32,6 @@ class IdCardScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Language Bar
-            LanguageBar(),
-
-            SizedBox(height: 24.h),
 
             // ID Card
             profileAsync.when(
