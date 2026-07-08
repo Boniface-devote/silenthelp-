@@ -19,6 +19,7 @@ class PhrasesScreen extends ConsumerStatefulWidget {
 class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
   late final TextToSpeechService _tts;
   String _selectedCategory = 'emergency';
+  String _speechStatusMessage = '';
 
   final List<String> _categories = [
     'emergency',
@@ -45,6 +46,11 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
 
   Future<void> _initializeTts() async {
     await _tts.initialize(language: 'en_US', rate: 0.5);
+    if (mounted) {
+      setState(() {
+        _speechStatusMessage = 'Tap any phrase to try playback.';
+      });
+    }
   }
 
   @override
@@ -55,6 +61,11 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
 
   Future<void> _speakPhrase(String phrase) async {
     await _tts.speak(phrase);
+    if (mounted) {
+      setState(() {
+        _speechStatusMessage = 'Playback request sent.';
+      });
+    }
   }
 
   @override
@@ -122,6 +133,24 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
             ),
 
             SizedBox(height: 24.h),
+
+            if (_speechStatusMessage.isNotEmpty)
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(12.w),
+                margin: EdgeInsets.only(bottom: 16.h),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Text(
+                  _speechStatusMessage,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
 
             // Phrase List
             ..._buildPhraseList(language),

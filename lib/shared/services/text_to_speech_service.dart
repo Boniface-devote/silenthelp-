@@ -1,5 +1,6 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'text_to_speech_impl.dart'
-    if (dart.library.js_interop) 'text_to_speech_stub.dart';
+    if (dart.library.html) 'text_to_speech_stub.dart';
 
 abstract class TextToSpeechService {
   Future<void> initialize({String language = 'en_US', double rate = 0.5});
@@ -8,5 +9,9 @@ abstract class TextToSpeechService {
 }
 
 TextToSpeechService createTextToSpeechService() {
+  if (kIsWeb) {
+    return createPlatformTextToSpeechService();
+  }
+
   return createPlatformTextToSpeechService();
 }

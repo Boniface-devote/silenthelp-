@@ -20,6 +20,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
   late stt.SpeechToText _speechToText;
   late final TextToSpeechService _tts;
   late TextEditingController _replyController;
+  String _speechStatusMessage = '';
 
   @override
   void initState() {
@@ -51,6 +52,11 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
 
   Future<void> _initializeTts() async {
     await _tts.initialize(language: 'en_US', rate: 0.5);
+    if (mounted) {
+      setState(() {
+        _speechStatusMessage = 'Tap the speaker button to try playback.';
+      });
+    }
   }
 
   @override
@@ -97,6 +103,11 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
   Future<void> _speakText(String text) async {
     if (text.isNotEmpty) {
       await _tts.speak(text);
+      if (mounted) {
+        setState(() {
+          _speechStatusMessage = 'Speech playback was requested.';
+        });
+      }
     }
   }
 
@@ -170,6 +181,24 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
             ),
 
             SizedBox(height: 24.h),
+
+            if (_speechStatusMessage.isNotEmpty)
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(12.w),
+                margin: EdgeInsets.only(bottom: 16.h),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Text(
+                  _speechStatusMessage,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
 
             // Mic Controls
             Row(
