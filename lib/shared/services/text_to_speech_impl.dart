@@ -6,6 +6,7 @@ TextToSpeechService createPlatformTextToSpeechService() => MobileTextToSpeechSer
 
 class MobileTextToSpeechService implements TextToSpeechService {
   late final FlutterTts _tts;
+  Future<void> _initFuture = Future.value();
 
   MobileTextToSpeechService() {
     WidgetsFlutterBinding.ensureInitialized();
@@ -14,6 +15,11 @@ class MobileTextToSpeechService implements TextToSpeechService {
 
   @override
   Future<void> initialize({String language = 'en_US', double rate = 0.5}) async {
+    _initFuture = _initialize(language: language, rate: rate);
+    await _initFuture;
+  }
+
+  Future<void> _initialize({required String language, required double rate}) async {
     try {
       await _tts.setLanguage(language);
       await _tts.setSpeechRate(rate);
@@ -27,6 +33,7 @@ class MobileTextToSpeechService implements TextToSpeechService {
     if (text.trim().isEmpty) {
       return;
     }
+    await _initFuture;
     try {
       await _tts.speak(text);
     } catch (_) {
