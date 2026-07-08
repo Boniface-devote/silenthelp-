@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../../shared/widgets/phrase_row.dart';
 import '../../shared/providers/locale_provider.dart';
+import '../../shared/services/text_to_speech_service.dart';
+import '../../shared/widgets/phrase_row.dart';
 import 'phrases_data.dart';
 
 class PhrasesScreen extends ConsumerStatefulWidget {
@@ -17,7 +17,7 @@ class PhrasesScreen extends ConsumerStatefulWidget {
 }
 
 class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
-  late FlutterTts _tts;
+  late final TextToSpeechService _tts;
   String _selectedCategory = 'emergency';
 
   final List<String> _categories = [
@@ -39,17 +39,12 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
   @override
   void initState() {
     super.initState();
-    _tts = FlutterTts();
+    _tts = createTextToSpeechService();
     _initializeTts();
   }
 
   Future<void> _initializeTts() async {
-    try {
-      await _tts.setLanguage('en_US');
-      await _tts.setSpeechRate(0.5);
-    } catch (e) {
-      print('Error initializing TTS: $e');
-    }
+    await _tts.initialize(language: 'en_US', rate: 0.5);
   }
 
   @override

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'core/services/location_service.dart';
 import 'app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  setUrlStrategy(const HashUrlStrategy());
   await EasyLocalization.ensureInitialized();
   
   // Initialize location service for caching and background tracking

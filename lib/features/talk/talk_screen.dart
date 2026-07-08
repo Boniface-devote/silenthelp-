@@ -4,9 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:flutter_tts/flutter_tts.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../shared/services/text_to_speech_service.dart';
 import 'talk_provider.dart';
 
 class TalkScreen extends ConsumerStatefulWidget {
@@ -18,14 +18,14 @@ class TalkScreen extends ConsumerStatefulWidget {
 
 class _TalkScreenState extends ConsumerState<TalkScreen> {
   late stt.SpeechToText _speechToText;
-  late FlutterTts _tts;
+  late final TextToSpeechService _tts;
   late TextEditingController _replyController;
 
   @override
   void initState() {
     super.initState();
     _speechToText = stt.SpeechToText();
-    _tts = FlutterTts();
+    _tts = createTextToSpeechService();
     _replyController = TextEditingController();
     _initializeSpeech();
     _initializeTts();
@@ -50,12 +50,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
   }
 
   Future<void> _initializeTts() async {
-    try {
-      await _tts.setLanguage('en_US');
-      await _tts.setSpeechRate(0.5);
-    } catch (e) {
-      print('Error initializing TTS: $e');
-    }
+    await _tts.initialize(language: 'en_US', rate: 0.5);
   }
 
   @override
