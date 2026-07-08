@@ -4,12 +4,35 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_native_contact_picker_plus/flutter_native_contact_picker_plus.dart';
+import 'package:flutter_native_contact_picker_plus/model/contact_model.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import '../../shared/widgets/language_bar.dart';
 import 'settings_provider.dart';
+
+class ContactSelectionData {
+  const ContactSelectionData({
+    required this.name,
+    required this.phoneNumber,
+  });
+
+  final String name;
+  final String phoneNumber;
+}
+
+ContactSelectionData buildContactSelectionData(Contact contact) {
+  final contactName = contact.fullName?.trim() ?? '';
+  final phoneNumber = contact.phoneNumbers?.isNotEmpty == true
+      ? contact.phoneNumbers!.first.trim()
+      : '';
+
+  return ContactSelectionData(
+    name: contactName,
+    phoneNumber: phoneNumber,
+  );
+}
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -190,7 +213,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: _pickEmergencyContact,
+                  onPressed: () => _pickContactAndFill(
+                    nameController: _emNameController,
+                    phoneController: _emPhoneController,
+                  ),
                   icon: const Icon(Icons.contacts_outlined),
                   label: Text(context.tr('pick_from_contacts')),
                   style: OutlinedButton.styleFrom(
@@ -223,6 +249,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               controller: _secondContactPhoneController,
               label: 'Family / Teacher Contact Number',
             ),
+            SizedBox(height: 8.h),
+            Semantics(
+              button: true,
+              label: context.tr('pick_from_contacts'),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _pickContactAndFill(
+                    nameController: _secondContactNameController,
+                    phoneController: _secondContactPhoneController,
+                  ),
+                  icon: const Icon(Icons.contacts_outlined),
+                  label: Text(context.tr('pick_from_contacts')),
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    side: const BorderSide(color: AppColors.teal),
+                    foregroundColor: AppColors.teal,
+                  ),
+                ),
+              ),
+            ),
 
             SizedBox(height: 20.h),
             _buildTextField(
@@ -238,6 +285,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _buildTextField(
               controller: _medicalContactPhoneController,
               label: 'Doctor / Nurse / Hospital Number',
+            ),
+            SizedBox(height: 8.h),
+            Semantics(
+              button: true,
+              label: context.tr('pick_from_contacts'),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _pickContactAndFill(
+                    nameController: _medicalContactNameController,
+                    phoneController: _medicalContactPhoneController,
+                  ),
+                  icon: const Icon(Icons.contacts_outlined),
+                  label: Text(context.tr('pick_from_contacts')),
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    side: const BorderSide(color: AppColors.teal),
+                    foregroundColor: AppColors.teal,
+                  ),
+                ),
+              ),
             ),
 
             SizedBox(height: 32.h),
@@ -319,7 +387,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Future<void> _pickEmergencyContact() async {
+  Future<void> _pickContactAndFill({
+    required TextEditingController nameController,
+    required TextEditingController phoneController,
+  }) async {
     final currentStatus = await Permission.contacts.status;
     final permissionStatus = currentStatus.isGranted
         ? currentStatus
@@ -354,15 +425,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         return;
       }
 
-      final contactName = contact.fullName?.trim() ?? '';
-      final phoneNumber = contact.phoneNumbers?.isNotEmpty == true
-          ? contact.phoneNumbers!.first.trim()
-          : '';
+      final selection = buildContactSelectionData(contact);
 
       if (mounted) {
         setState(() {
-          _emNameController.text = contactName;
-          _emPhoneController.text = phoneNumber;
+          nameController.text = selection.name;
+          phoneController.text = selection.phoneNumber;
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
