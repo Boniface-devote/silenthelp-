@@ -282,18 +282,31 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
             profileAsync.when(
               data: (profile) => Column(
                 children: [
-                  // Primary Contact
                   ContactRow(
                     name: profile.emContactName,
                     number: profile.emContactNumber,
                     onCall: () => _makeCall(profile.emContactNumber),
                   ),
-                  // Police
+                  if (profile.secondContactName.isNotEmpty || profile.secondContactNumber.isNotEmpty)
+                    ContactRow(
+                      name: profile.secondContactLabel.isNotEmpty
+                          ? '${profile.secondContactLabel}: ${profile.secondContactName}'
+                          : profile.secondContactName,
+                      number: profile.secondContactNumber,
+                      onCall: () => _makeCall(profile.secondContactNumber),
+                    ),
+                  if (profile.medicalContactName.isNotEmpty || profile.medicalContactNumber.isNotEmpty)
+                    ContactRow(
+                      name: profile.medicalContactLabel.isNotEmpty
+                          ? '${profile.medicalContactLabel}: ${profile.medicalContactName}'
+                          : profile.medicalContactName,
+                      number: profile.medicalContactNumber,
+                      onCall: () => _makeCall(profile.medicalContactNumber),
+                    ),
                   ContactRow(
                     name: 'Police',
                     number: AppConstants.policeNumber,
-                    onCall: () =>
-                        _makeCall(AppConstants.policeNumber),
+                    onCall: () => _makeCall(AppConstants.policeNumber),
                   ),
                 ],
               ),
@@ -652,15 +665,16 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
         'EMERGENCY\n\nI need help.\n\nI use Ugandan Sign Language (UgSL) and may not hear spoken communication.\n\nMy location: $address\nGPS: $coordinates\n\nPlease assist me or contact my emergency contact.\n\n— SilentHelp';
 
     try {
-      final Uri smsUri = Uri(
-        scheme: 'sms',
-        path: phoneNumber,
-        queryParameters: {'body': message},
+      final Uri smsUri = Uri.parse(
+        'sms:${phoneNumber.isNotEmpty ? phoneNumber : ''}?body=${Uri.encodeComponent(message)}',
       );
 
-      if (await canLaunchUrl(smsUri)) {
-        await launchUrl(smsUri);
-      } else {
+      final launched = await launchUrl(
+        smsUri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched) {
         throw 'Could not launch SMS';
       }
     } catch (e) {

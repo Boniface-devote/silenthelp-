@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_native_contact_picker_plus/flutter_native_contact_picker_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
@@ -11,6 +13,10 @@ import 'settings_provider.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
+
+  static FlutterContactPickerPlus createContactPicker() {
+    return FlutterContactPickerPlus();
+  }
 
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
@@ -24,6 +30,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late TextEditingController _noteController;
   late TextEditingController _emNameController;
   late TextEditingController _emPhoneController;
+  late TextEditingController _secondContactNameController;
+  late TextEditingController _secondContactPhoneController;
+  late TextEditingController _secondContactLabelController;
+  late TextEditingController _medicalContactNameController;
+  late TextEditingController _medicalContactPhoneController;
+  late TextEditingController _medicalContactLabelController;
 
   @override
   void initState() {
@@ -35,6 +47,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _noteController = TextEditingController();
     _emNameController = TextEditingController();
     _emPhoneController = TextEditingController();
+    _secondContactNameController = TextEditingController();
+    _secondContactPhoneController = TextEditingController();
+    _secondContactLabelController = TextEditingController(text: 'Family / Teacher');
+    _medicalContactNameController = TextEditingController();
+    _medicalContactPhoneController = TextEditingController();
+    _medicalContactLabelController = TextEditingController(text: 'Doctor / Nurse / Hospital');
     
     // Set initial values from provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -47,6 +65,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _noteController.text = profile.medicalNote;
         _emNameController.text = profile.emContactName;
         _emPhoneController.text = profile.emContactNumber;
+        _secondContactNameController.text = profile.secondContactName;
+        _secondContactPhoneController.text = profile.secondContactNumber;
+        _secondContactLabelController.text = profile.secondContactLabel.isNotEmpty
+            ? profile.secondContactLabel
+            : 'Family / Teacher';
+        _medicalContactNameController.text = profile.medicalContactName;
+        _medicalContactPhoneController.text = profile.medicalContactNumber;
+        _medicalContactLabelController.text = profile.medicalContactLabel.isNotEmpty
+            ? profile.medicalContactLabel
+            : 'Doctor / Nurse / Hospital';
       });
     });
   }
@@ -60,6 +88,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _noteController.dispose();
     _emNameController.dispose();
     _emPhoneController.dispose();
+    _secondContactNameController.dispose();
+    _secondContactPhoneController.dispose();
+    _secondContactLabelController.dispose();
+    _medicalContactNameController.dispose();
+    _medicalContactPhoneController.dispose();
+    _medicalContactLabelController.dispose();
     super.dispose();
   }
 
@@ -149,11 +183,61 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               controller: _emNameController,
               label: context.tr('lbl_em_name'),
             ),
+            SizedBox(height: 8.h),
+            Semantics(
+              button: true,
+              label: context.tr('pick_from_contacts'),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _pickEmergencyContact,
+                  icon: const Icon(Icons.contacts_outlined),
+                  label: Text(context.tr('pick_from_contacts')),
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    side: const BorderSide(color: AppColors.teal),
+                    foregroundColor: AppColors.teal,
+                  ),
+                ),
+              ),
+            ),
             SizedBox(height: 12.h),
 
             _buildTextField(
               controller: _emPhoneController,
               label: context.tr('lbl_em_num'),
+            ),
+
+            SizedBox(height: 20.h),
+            _buildTextField(
+              controller: _secondContactLabelController,
+              label: 'Contact Role 2',
+            ),
+            SizedBox(height: 12.h),
+            _buildTextField(
+              controller: _secondContactNameController,
+              label: 'Family / Teacher Contact Name',
+            ),
+            SizedBox(height: 12.h),
+            _buildTextField(
+              controller: _secondContactPhoneController,
+              label: 'Family / Teacher Contact Number',
+            ),
+
+            SizedBox(height: 20.h),
+            _buildTextField(
+              controller: _medicalContactLabelController,
+              label: 'Medical Contact Role',
+            ),
+            SizedBox(height: 12.h),
+            _buildTextField(
+              controller: _medicalContactNameController,
+              label: 'Doctor / Nurse / Hospital Name',
+            ),
+            SizedBox(height: 12.h),
+            _buildTextField(
+              controller: _medicalContactPhoneController,
+              label: 'Doctor / Nurse / Hospital Number',
             ),
 
             SizedBox(height: 32.h),
@@ -235,6 +319,73 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Future<void> _pickEmergencyContact() async {
+    final currentStatus = await Permission.contacts.status;
+    final permissionStatus = currentStatus.isGranted
+        ? currentStatus
+        : await Permission.contacts.request();
+
+    if (!permissionStatus.isGranted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr('contacts_permission_denied')),
+            backgroundColor: AppColors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      final contactPicker = SettingsScreen.createContactPicker();
+      final contact = await contactPicker.selectContact();
+
+      if (contact == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(context.tr('contacts_no_selection')),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+
+      final contactName = contact.fullName?.trim() ?? '';
+      final phoneNumber = contact.phoneNumbers?.isNotEmpty == true
+          ? contact.phoneNumbers!.first.trim()
+          : '';
+
+      if (mounted) {
+        setState(() {
+          _emNameController.text = contactName;
+          _emPhoneController.text = phoneNumber;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr('contacts_selected')),
+            backgroundColor: AppColors.teal,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr('contacts_pick_error')),
+            backgroundColor: AppColors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   void _saveProfile() async {
     final profile = UserProfile(
       name: _nameController.text,
@@ -244,6 +395,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       medicalNote: _noteController.text,
       emContactName: _emNameController.text,
       emContactNumber: _emPhoneController.text,
+      secondContactName: _secondContactNameController.text,
+      secondContactNumber: _secondContactPhoneController.text,
+      secondContactLabel: _secondContactLabelController.text,
+      medicalContactName: _medicalContactNameController.text,
+      medicalContactNumber: _medicalContactPhoneController.text,
+      medicalContactLabel: _medicalContactLabelController.text,
     );
 
     await ref

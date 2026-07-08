@@ -107,14 +107,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
               SizedBox(height: 32.h),
 
-              // Feature Grid (3 items)
+              // Feature Grid (4 items)
               GridView.count(
-                crossAxisCount: 3,
+                crossAxisCount: 2,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 crossAxisSpacing: 12.w,
                 mainAxisSpacing: 12.h,
-                childAspectRatio: 0.85,
+                childAspectRatio: 1.0,
                 children: [
                   // Talk Mode
                   FeatureCard(
@@ -152,72 +152,53 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     subtitle: context.tr('my_id_sub'),
                     onTap: () => context.go(AppConstants.routeIdCard),
                   ),
+                  // Learn Signs
+                  FeatureCard(
+                    iconBgColor: AppColors.purple.withValues(alpha: 0.2),
+                    icon: Icon(
+                      Icons.school,
+                      color: AppColors.purple,
+                      size: 28.sp,
+                    ),
+                    title: context.tr('learn'),
+                    subtitle: 'Sign lessons',
+                    onTap: () => context.go(AppConstants.routeLearn),
+                  ),
                 ],
               ),
 
-              SizedBox(height: 32.h),
+              SizedBox(height: 12.h),
 
-              // Learn Signs & Settings Row
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => context.go(AppConstants.routeLearn),
-                      child: Container(
-                        padding: EdgeInsets.all(16.w),
-                        decoration: BoxDecoration(
-                          color: AppColors.card,
-                          borderRadius: BorderRadius.circular(16.r),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.school,
-                              color: AppColors.purple,
-                              size: 32.sp,
-                            ),
-                            SizedBox(height: 8.h),
-                            Text(
-                              context.tr('learn'),
-                              style: AppTextStyles.labelMedium,
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+              // Settings button below
+              GestureDetector(
+                onTap: () => context.go(AppConstants.routeSettings),
+                child: Container(
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(16.r),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.settings,
+                        color: AppColors.teal,
+                        size: 24.sp,
+                      ),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: Text(
+                          context.tr('settings_title'),
+                          style: AppTextStyles.labelMedium.copyWith(fontSize: 12.sp),
+                          textAlign: TextAlign.start,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => context.go(AppConstants.routeSettings),
-                      child: Container(
-                        padding: EdgeInsets.all(16.w),
-                        decoration: BoxDecoration(
-                          color: AppColors.card,
-                          borderRadius: BorderRadius.circular(16.r),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.settings,
-                              color: AppColors.teal,
-                              size: 32.sp,
-                            ),
-                            SizedBox(height: 8.h),
-                            Text(
-                              context.tr('settings_title'),
-                              style: AppTextStyles.labelMedium,
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
 
               SizedBox(height: 40.h),

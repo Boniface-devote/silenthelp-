@@ -24,7 +24,7 @@ class FeatureCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.all(16.w),
+        padding: EdgeInsets.all(12.w),
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(16.r),
@@ -32,27 +32,36 @@ class FeatureCard extends StatelessWidget {
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 60.w,
-              height: 60.w,
+              width: 48.w,
+              height: 48.w,
               decoration: BoxDecoration(
                 color: iconBgColor,
                 borderRadius: BorderRadius.circular(12.r),
               ),
               child: Center(child: icon),
             ),
-            SizedBox(height: 12.h),
-            Text(
-              title,
-              style: AppTextStyles.labelLarge,
-              textAlign: TextAlign.center,
+            SizedBox(height: 8.h),
+            Flexible(
+              child: Text(
+                title,
+                style: AppTextStyles.labelLarge.copyWith(fontSize: 12.sp),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            SizedBox(height: 4.h),
-            Text(
-              subtitle,
-              style: AppTextStyles.caption,
-              textAlign: TextAlign.center,
+            SizedBox(height: 2.h),
+            Flexible(
+              child: Text(
+                subtitle,
+                style: AppTextStyles.caption.copyWith(fontSize: 10.sp),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),

@@ -572,8 +572,7 @@ Please communicate by:
 
 Emergency Contact:
 ${profile.emContactName} — ${profile.emContactNumber}
-
-Phone: ${profile.phone}
+${profile.secondContactName.isNotEmpty || profile.secondContactNumber.isNotEmpty ? '${profile.secondContactLabel.isNotEmpty ? profile.secondContactLabel : 'Family / Teacher'}: ${profile.secondContactName} — ${profile.secondContactNumber}\n' : ''}${profile.medicalContactName.isNotEmpty || profile.medicalContactNumber.isNotEmpty ? '${profile.medicalContactLabel.isNotEmpty ? profile.medicalContactLabel : 'Doctor / Nurse / Hospital'}: ${profile.medicalContactName} — ${profile.medicalContactNumber}\n' : ''}Phone: ${profile.phone}
 Blood Type: ${profile.bloodType}
 Condition: ${profile.condition}
 
@@ -588,8 +587,13 @@ ${profile.medicalNote.isNotEmpty ? 'Medical Note: ${profile.medicalNote}' : ''}
     );
 
     try {
-      if (await canLaunchUrl(smsUri)) {
-        await launchUrl(smsUri);
+      final launched = await launchUrl(
+        smsUri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched) {
+        throw 'Could not open SMS';
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

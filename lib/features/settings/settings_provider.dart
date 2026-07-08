@@ -9,6 +9,12 @@ class UserProfile {
   final String medicalNote;
   final String emContactName;
   final String emContactNumber;
+  final String secondContactName;
+  final String secondContactNumber;
+  final String secondContactLabel;
+  final String medicalContactName;
+  final String medicalContactNumber;
+  final String medicalContactLabel;
 
   UserProfile({
     required this.name,
@@ -18,6 +24,12 @@ class UserProfile {
     required this.medicalNote,
     required this.emContactName,
     required this.emContactNumber,
+    this.secondContactName = '',
+    this.secondContactNumber = '',
+    this.secondContactLabel = 'Family / Teacher',
+    this.medicalContactName = '',
+    this.medicalContactNumber = '',
+    this.medicalContactLabel = 'Doctor / Nurse / Hospital',
   });
 
   // Default profile
@@ -30,6 +42,12 @@ class UserProfile {
       medicalNote: 'I communicate via text',
       emContactName: 'emergency contact name',
       emContactNumber: '+2567XXXXXXXX',
+      secondContactName: '',
+      secondContactNumber: '',
+      secondContactLabel: 'Family / Teacher',
+      medicalContactName: '',
+      medicalContactNumber: '',
+      medicalContactLabel: 'Doctor / Nurse / Hospital',
     );
   }
 
@@ -43,6 +61,12 @@ class UserProfile {
       'medicalNote': medicalNote,
       'emContactName': emContactName,
       'emContactNumber': emContactNumber,
+      'secondContactName': secondContactName,
+      'secondContactNumber': secondContactNumber,
+      'secondContactLabel': secondContactLabel,
+      'medicalContactName': medicalContactName,
+      'medicalContactNumber': medicalContactNumber,
+      'medicalContactLabel': medicalContactLabel,
     };
   }
 
@@ -56,6 +80,12 @@ class UserProfile {
       medicalNote: map['medicalNote'] as String? ?? 'I communicate via text',
       emContactName: map['emContactName'] as String? ?? 'Dr. Sarah Nakato',
       emContactNumber: map['emContactNumber'] as String? ?? '+2567XXXXXXXX',
+      secondContactName: map['secondContactName'] as String? ?? '',
+      secondContactNumber: map['secondContactNumber'] as String? ?? '',
+      secondContactLabel: map['secondContactLabel'] as String? ?? 'Family / Teacher',
+      medicalContactName: map['medicalContactName'] as String? ?? '',
+      medicalContactNumber: map['medicalContactNumber'] as String? ?? '',
+      medicalContactLabel: map['medicalContactLabel'] as String? ?? 'Doctor / Nurse / Hospital',
     );
   }
 }
@@ -82,6 +112,12 @@ class SettingsNotifier extends AsyncNotifier<UserProfile> {
       medicalNote: prefs.getString('medicalNote') ?? 'I communicate via text',
       emContactName: prefs.getString('emContactName') ?? 'Dr. Sarah Nakato',
       emContactNumber: prefs.getString('emContactNumber') ?? '+2567XXXXXXXX',
+      secondContactName: prefs.getString('secondContactName') ?? '',
+      secondContactNumber: prefs.getString('secondContactNumber') ?? '',
+      secondContactLabel: prefs.getString('secondContactLabel') ?? 'Family / Teacher',
+      medicalContactName: prefs.getString('medicalContactName') ?? '',
+      medicalContactNumber: prefs.getString('medicalContactNumber') ?? '',
+      medicalContactLabel: prefs.getString('medicalContactLabel') ?? 'Doctor / Nurse / Hospital',
     );
   }
 
@@ -94,6 +130,12 @@ class SettingsNotifier extends AsyncNotifier<UserProfile> {
     await prefs.setString('medicalNote', profile.medicalNote);
     await prefs.setString('emContactName', profile.emContactName);
     await prefs.setString('emContactNumber', profile.emContactNumber);
+    await prefs.setString('secondContactName', profile.secondContactName);
+    await prefs.setString('secondContactNumber', profile.secondContactNumber);
+    await prefs.setString('secondContactLabel', profile.secondContactLabel);
+    await prefs.setString('medicalContactName', profile.medicalContactName);
+    await prefs.setString('medicalContactNumber', profile.medicalContactNumber);
+    await prefs.setString('medicalContactLabel', profile.medicalContactLabel);
     
     state = AsyncValue.data(profile);
   }
