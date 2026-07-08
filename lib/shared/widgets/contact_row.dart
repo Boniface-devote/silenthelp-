@@ -26,24 +26,29 @@ class ContactRow extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: AppTextStyles.labelMedium,
-              ),
-              SizedBox(height: 4.h),
-              Text(
-                number,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: AppTextStyles.labelMedium,
+                  softWrap: true,
                 ),
-              ),
-            ],
+                SizedBox(height: 4.h),
+                Text(
+                  number,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                  softWrap: true,
+                ),
+              ],
+            ),
           ),
+          SizedBox(width: 12.w),
           GestureDetector(
             onTap: onCall,
             child: Container(

@@ -537,17 +537,99 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     // Initial vibration feedback when SOS button is pressed
     HapticFeedback.heavyImpact();
 
+    final profileAsync = ref.read(settingsProvider);
+    final profile = await profileAsync.valueOrNull;
+
+    if (profile == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile is still loading. Please try again.')),
+        );
+      }
+      return;
+    }
+
+    final recipient = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Send SOS to'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text('Primary emergency contact'),
+                subtitle: Text(profile.emContactName.isNotEmpty ? profile.emContactName : 'Primary contact'),
+                onTap: () => Navigator.of(dialogContext).pop('primary'),
+              ),
+              if (profile.secondContactName.isNotEmpty || profile.secondContactNumber.isNotEmpty)
+                ListTile(
+                  title: const Text('Family / teacher'),
+                  subtitle: Text(profile.secondContactName.isNotEmpty ? profile.secondContactName : 'Family / teacher'),
+                  onTap: () => Navigator.of(dialogContext).pop('family'),
+                ),
+              if (profile.medicalContactName.isNotEmpty || profile.medicalContactNumber.isNotEmpty)
+                ListTile(
+                  title: const Text('Doctor / nurse / hospital'),
+                  subtitle: Text(profile.medicalContactName.isNotEmpty ? profile.medicalContactName : 'Medical contact'),
+                  onTap: () => Navigator.of(dialogContext).pop('medical'),
+                ),
+              ListTile(
+                title: const Text('Police'),
+                subtitle: const Text('+256 999'),
+                onTap: () => Navigator.of(dialogContext).pop('police'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (recipient == null) {
+      return;
+    }
+
     ref.read(emergencyProvider.notifier).setSendingSos(true);
 
     try {
       final emergencyNotifier = ref.read(emergencyProvider.notifier);
-      final profileAsync = ref.read(settingsProvider);
       String emContactNumber = '+256 700 123 456';
+      String recipientName = 'Primary contact';
 
-      // Get emergency contact
-      profileAsync.whenData((profile) {
-        emContactNumber = profile.emContactNumber;
-      });
+      switch (recipient) {
+        case 'primary':
+          emContactNumber = profile.emContactNumber;
+          recipientName = profile.emContactName.isNotEmpty ? profile.emContactName : 'Primary contact';
+          break;
+        case 'family':
+          emContactNumber = profile.secondContactNumber;
+          recipientName = profile.secondContactLabel.isNotEmpty ? profile.secondContactLabel : 'Family / teacher';
+          break;
+        case 'medical':
+          emContactNumber = profile.medicalContactNumber;
+          recipientName = profile.medicalContactLabel.isNotEmpty ? profile.medicalContactLabel : 'Doctor / nurse / hospital';
+          break;
+        case 'police':
+          emContactNumber = AppConstants.policeNumber;
+          recipientName = 'Police';
+          break;
+        default:
+          emContactNumber = profile.emContactNumber;
+          recipientName = profile.emContactName.isNotEmpty ? profile.emContactName : 'Primary contact';
+      }
+
+      if (emContactNumber.trim().isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Please add a phone number for $recipientName first.'),
+              backgroundColor: AppColors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
 
       // Strategy: Send immediately with cached location, then improve in background
       CachedLocation? currentLocation =
