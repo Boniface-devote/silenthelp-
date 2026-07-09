@@ -18,7 +18,7 @@ class SilentHelpApp extends ConsumerWidget {
     // Get the current locale from EasyLocalization context
     final currentLocale = context.locale;
     
-    // Update the provider if EasyLocalization locale has changed
+    // Update the provider if EasyLocalization locale has changed.
     // (e.g., if locale was changed from persistent storage on app restart)
     if (selectedLocale != currentLocale) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
