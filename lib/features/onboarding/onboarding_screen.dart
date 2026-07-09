@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
+import '../../shared/widgets/responsive_shell.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -58,129 +59,131 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Stack(
-        children: [
-          PageView(
-            controller: _pageController,
-            onPageChanged: (page) {
-              setState(() {
-                _currentPage = page;
-              });
-            },
-            children: [
-              _buildWelcomePage(),
-              _buildSOSPage(),
-              _buildProfilePage(),
-              _buildLanguagePage(),
-              _buildPhrasesPage(),
-            ],
-          ),
-          // Top Skip Button
-          Positioned(
-            top: 20.h,
-            right: 20.w,
-            child: SafeArea(
-              child: GestureDetector(
-                onTap: _skipOnboarding,
-                child: Text(
-                  context.tr('onboarding_skip'),
-                  style: AppTextStyles.labelSmall.copyWith(
-                    color: AppColors.textSecondary,
-                    decoration: TextDecoration.underline,
+      body: ResponsiveShell(
+        child: Stack(
+          children: [
+            PageView(
+              controller: _pageController,
+              onPageChanged: (page) {
+                setState(() {
+                  _currentPage = page;
+                });
+              },
+              children: [
+                _buildWelcomePage(),
+                _buildSOSPage(),
+                _buildProfilePage(),
+                _buildLanguagePage(),
+                _buildPhrasesPage(),
+              ],
+            ),
+            // Top Skip Button
+            Positioned(
+              top: 20.h,
+              right: 20.w,
+              child: SafeArea(
+                child: GestureDetector(
+                  onTap: _skipOnboarding,
+                  child: Text(
+                    context.tr('onboarding_skip'),
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: AppColors.textSecondary,
+                      decoration: TextDecoration.underline,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          // Bottom Navigation
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: AppColors.border, width: 1),
-                ),
-                color: AppColors.surface,
-              ),
-              child: Column(
-                children: [
-                  // Page Indicators
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(5, (index) {
-                      return Container(
-                        margin: EdgeInsets.symmetric(horizontal: 4.w),
-                        width: index == _currentPage ? 24.w : 8.w,
-                        height: 8.h,
-                        decoration: BoxDecoration(
-                          color: index == _currentPage
-                              ? AppColors.teal
-                              : AppColors.border,
-                          borderRadius: BorderRadius.circular(4.r),
-                        ),
-                      );
-                    }),
+            // Bottom Navigation
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: AppColors.border, width: 1),
                   ),
-                  SizedBox(height: 20.h),
-                  // Buttons
-                  Row(
-                    children: [
-                      if (_currentPage > 0)
+                  color: AppColors.surface,
+                ),
+                child: Column(
+                  children: [
+                    // Page Indicators
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        return Container(
+                          margin: EdgeInsets.symmetric(horizontal: 4.w),
+                          width: index == _currentPage ? 24.w : 8.w,
+                          height: 8.h,
+                          decoration: BoxDecoration(
+                            color: index == _currentPage
+                                ? AppColors.teal
+                                : AppColors.border,
+                            borderRadius: BorderRadius.circular(4.r),
+                          ),
+                        );
+                      }),
+                    ),
+                    SizedBox(height: 20.h),
+                    // Buttons
+                    Row(
+                      children: [
+                        if (_currentPage > 0)
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.card,
+                                padding: EdgeInsets.symmetric(vertical: 14.h),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  side: BorderSide(color: AppColors.border),
+                                ),
+                              ),
+                              onPressed: () {
+                                _pageController.previousPage(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                );
+                              },
+                              child: Text(
+                                context.tr('onboarding_back'),
+                                style: AppTextStyles.buttonMedium.copyWith(
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (_currentPage > 0) SizedBox(width: 12.w),
                         Expanded(
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.card,
+                              backgroundColor: AppColors.teal,
                               padding: EdgeInsets.symmetric(vertical: 14.h),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12.r),
-                                side: BorderSide(color: AppColors.border),
                               ),
                             ),
-                            onPressed: () {
-                              _pageController.previousPage(
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              );
-                            },
+                            onPressed: _nextPage,
                             child: Text(
-                              context.tr('onboarding_back'),
+                              _currentPage == 4
+                                  ? context.tr('onboarding_start')
+                                  : context.tr('onboarding_next'),
                               style: AppTextStyles.buttonMedium.copyWith(
-                                color: AppColors.textPrimary,
+                                color: AppColors.background,
                               ),
                             ),
                           ),
                         ),
-                      if (_currentPage > 0) SizedBox(width: 12.w),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.teal,
-                            padding: EdgeInsets.symmetric(vertical: 14.h),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.r),
-                            ),
-                          ),
-                          onPressed: _nextPage,
-                          child: Text(
-                            _currentPage == 4
-                                ? context.tr('onboarding_start')
-                                : context.tr('onboarding_next'),
-                            style: AppTextStyles.buttonMedium.copyWith(
-                              color: AppColors.background,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'silenthelp-cache-v1';
+const CACHE_NAME = 'silenthelp-cache-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -27,5 +27,26 @@ self.addEventListener('fetch', event => {
   if (requestUrl.origin !== location.origin) {
     return;
   }
-  event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request)));
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request).then(cached => {
+      if (cached) {
+        return cached;
+      }
+
+      return fetch(event.request).then(networkResponse => {
+        const responseClone = networkResponse.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+        return networkResponse;
+      });
+    })
+  );
 });
