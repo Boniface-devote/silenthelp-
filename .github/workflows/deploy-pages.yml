@@ -30,8 +30,21 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Stamp web cache version
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('web/service-worker.js')
+          text = path.read_text()
+          text = text.replace('__CACHE_VERSION__', '${{ github.run_number }}')
+          path.write_text(text)
+          PY
+          touch .nojekyll
+
       - name: Build web app
-        run: flutter build web --release --base-href /silenthelp-app/ --pwa-strategy none
+        run: |
+          flutter build web --release --base-href "/${{ github.event.repository.name }}/" --pwa-strategy none
+          cp .nojekyll build/web/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
