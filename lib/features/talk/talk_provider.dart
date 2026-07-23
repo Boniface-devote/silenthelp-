@@ -1,49 +1,94 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class TalkState {
-  final String transcribedText;
-  final bool isListening;
-  final String userReply;
+enum MessageSender { hearing, deaf }
 
-  TalkState({
-    this.transcribedText = 'Listening for speech...',
+class ChatMessage {
+  final String text;
+  final MessageSender sender;
+  final DateTime timestamp;
+
+  ChatMessage({
+    required this.text,
+    required this.sender,
+    required this.timestamp,
+  });
+}
+
+class TalkState {
+  final List<ChatMessage> messages;
+  final bool isListening;
+
+  /// Live speech being transcribed — not yet committed to the message list.
+  final String liveTranscript;
+
+  const TalkState({
+    this.messages = const [],
     this.isListening = false,
-    this.userReply = '',
+    this.liveTranscript = '',
   });
 
   TalkState copyWith({
-    String? transcribedText,
+    List<ChatMessage>? messages,
     bool? isListening,
-    String? userReply,
+    String? liveTranscript,
   }) {
     return TalkState(
-      transcribedText: transcribedText ?? this.transcribedText,
+      messages: messages ?? this.messages,
       isListening: isListening ?? this.isListening,
-      userReply: userReply ?? this.userReply,
+      liveTranscript: liveTranscript ?? this.liveTranscript,
     );
   }
 }
 
 class TalkNotifier extends StateNotifier<TalkState> {
-  TalkNotifier() : super(TalkState());
+  TalkNotifier() : super(const TalkState());
 
-  void setTranscribedText(String text) {
-    state = state.copyWith(transcribedText: text);
+  /// Commit the live transcript as a left (hearing) bubble.
+  void addHearingMessage(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    state = state.copyWith(
+      messages: [
+        ...state.messages,
+        ChatMessage(
+          text: trimmed,
+          sender: MessageSender.hearing,
+          timestamp: DateTime.now(),
+        ),
+      ],
+      liveTranscript: '',
+    );
   }
 
-  void setIsListening(bool listening) {
-    state = state.copyWith(isListening: listening);
+  /// Add a right (deaf user) bubble.
+  void addDeafMessage(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    state = state.copyWith(
+      messages: [
+        ...state.messages,
+        ChatMessage(
+          text: trimmed,
+          sender: MessageSender.deaf,
+          timestamp: DateTime.now(),
+        ),
+      ],
+    );
   }
 
-  void setUserReply(String reply) {
-    state = state.copyWith(userReply: reply);
+  /// Update the live in-progress transcript (not yet a bubble).
+  void setLiveTranscript(String text) {
+    state = state.copyWith(liveTranscript: text);
   }
 
-  void reset() {
-    state = TalkState();
+  void setIsListening(bool value) {
+    state = state.copyWith(isListening: value);
+  }
+
+  void clearConversation() {
+    state = const TalkState();
   }
 }
 
-final talkProvider = StateNotifierProvider<TalkNotifier, TalkState>(
-  (ref) => TalkNotifier(),
-);
+final talkProvider =
+    StateNotifierProvider<TalkNotifier, TalkState>((ref) => TalkNotifier());

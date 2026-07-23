@@ -11,6 +11,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import '../../shared/widgets/contact_row.dart';
 import '../../core/services/location_service.dart';
+import '../../core/services/sms_service.dart';
 import 'emergency_provider.dart';
 import '../settings/settings_provider.dart';
 
@@ -24,6 +25,7 @@ class EmergencyScreen extends ConsumerStatefulWidget {
 class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     with TickerProviderStateMixin {
   late AnimationController _pulseController;
+  DateTime? _sentAt;   // set when SOS is dispatched
 
   @override
   void initState() {
@@ -87,51 +89,10 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
 
             SizedBox(height: 24.h),
 
-            // Status Card
-            Container(
-              padding: EdgeInsets.all(16.w),
-              decoration: BoxDecoration(
-                color: AppColors.teal.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12.r),
-                border: Border.all(
-                  color: AppColors.teal,
-                  width: 1.5,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.check_circle,
-                    color: AppColors.teal,
-                    size: 20.sp,
-                  ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Ready to send emergency alert',
-                          style: AppTextStyles.labelSmall.copyWith(
-                            color: AppColors.teal,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        SizedBox(height: 4.h),
-                        Text(
-                          emergencyState.currentLocation != null
-                              ? '📍 Location ready ${emergencyState.isLocationAccurate ? '🟢 (Accurate)' : '🟡 (Approximate)'}'
-                              : '📡 Getting location...',
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // Status / Confirmation Card
+            emergencyState.sosSent
+                ? _buildSentConfirmationCard()
+                : _buildReadyCard(emergencyState),
 
             SizedBox(height: 24.h),
             _buildPulsingSosButton(context, ref),
@@ -336,24 +297,14 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'EMERGENCY',
+                    'SOS! I am Deaf (UgSL). Need help!',
                     style: AppTextStyles.bodySmall.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   SizedBox(height: 8.h),
                   Text(
-                    'I need help.',
-                    style: AppTextStyles.bodySmall,
-                  ),
-                  SizedBox(height: 8.h),
-                  Text(
-                    'I use Ugandan Sign Language (UgSL) and may not hear spoken communication.',
-                    style: AppTextStyles.bodySmall,
-                  ),
-                  SizedBox(height: 8.h),
-                  Text(
-                    'My location: ${emergencyState.currentLocation?.address?.isNotEmpty == true ? emergencyState.currentLocation!.address! : 'Unknown location'}',
+                    'Loc: ${emergencyState.currentLocation?.address?.isNotEmpty == true ? emergencyState.currentLocation!.address! : 'Unknown location'}',
                     style: AppTextStyles.bodySmall,
                   ),
                   SizedBox(height: 4.h),
@@ -365,12 +316,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                   ),
                   SizedBox(height: 8.h),
                   Text(
-                    'Please assist me or contact my emergency contact.',
-                    style: AppTextStyles.bodySmall,
-                  ),
-                  SizedBox(height: 8.h),
-                  Text(
-                    '— SilentHelp',
+                    '-SilentHelp',
                     style: AppTextStyles.caption,
                   ),
                 ],
@@ -404,6 +350,97 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
       ),
     );
   }
+
+  // ── Status cards ─────────────────────────────────────────────────────────
+
+  Widget _buildReadyCard(EmergencyState state) {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: AppColors.teal.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: AppColors.teal, width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.check_circle, color: AppColors.teal, size: 20.sp),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ready to send emergency alert',
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: AppColors.teal,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  state.currentLocation != null
+                      ? '📍 Location ready '
+                          '${state.isLocationAccurate ? '🟢 (Accurate)' : '🟡 (Approximate)'}'
+                      : '📡 Getting location...',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSentConfirmationCard() {
+    final timeStr = _sentAt != null
+        ? '${_sentAt!.hour.toString().padLeft(2, '0')}:'
+          '${_sentAt!.minute.toString().padLeft(2, '0')}:'
+          '${_sentAt!.second.toString().padLeft(2, '0')}'
+        : '';
+
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B4D2E),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: const Color(0xFF4CAF50), width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.send, color: const Color(0xFF4CAF50), size: 22.sp),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '✅  SOS sent successfully',
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: const Color(0xFF4CAF50),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (timeStr.isNotEmpty) ...[
+                  SizedBox(height: 4.h),
+                  Text(
+                    'Dispatched at $timeStr',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildPulsingSosButton(BuildContext context, WidgetRef ref) {
     final completionAsync = ref.watch(profileCompletionProvider);
@@ -685,7 +722,6 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
         emContactNumber,
         address,
         coordinates,
-        emergencyNotifier,
       );
 
       // Log: SOS opened in SMS app
@@ -697,7 +733,8 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
             ),
           );
 
-      // SUCCESS: Send SOS was successful
+      // SUCCESS: stamp time, update state, fire haptics
+      setState(() => _sentAt = DateTime.now());
       ref.read(emergencyProvider.notifier).setSosSent(true);
 
       // Strong vibration feedback for SMS confirmation
@@ -708,15 +745,15 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.tr('sos_prepared')),
-            backgroundColor: AppColors.teal,
-            duration: const Duration(seconds: 3),
+            content: const Text('✅ SOS sent successfully'),
+            backgroundColor: const Color(0xFF4CAF50),
+            duration: const Duration(seconds: 4),
           ),
         );
       }
 
-      // BACKGROUND: Try to get better location and send updated SOS
-      _improveLocationInBackground(context, ref, emContactNumber, currentLocation);
+      // Location continues refreshing in the background for UI display only.
+      // No further SMS is sent — exactly one SOS message per tap.
     } catch (e) {
       // Error vibration
       HapticFeedback.selectionClick();
@@ -741,122 +778,51 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     String phoneNumber,
     String address,
     String coordinates,
-    EmergencyNotifier notifier,
   ) async {
+    // Keep the message inside a single SMS (<=160 chars, GSM-7 only).
+    // Non-GSM-7 chars (e.g. the em-dash) force UCS-2 encoding which cuts the
+    // per-part limit to 70 chars and caused 4 charged messages per SOS tap.
+    // Use only plain ASCII and truncate the address if it is unusually long.
+    final safeAddress =
+        address.length > 60 ? '${address.substring(0, 57)}...' : address;
+
+    // Max length check (all ASCII/GSM-7, ~133 chars worst case):
+    //   35  "SOS! I am Deaf (UgSL). Need help!\n"
+    //   65  "Loc: " + 60-char address
+    //    1  "\n"
+    //   20  "GPS: " + 15-char coords
+    //    1  "\n"
+    //   11  "-SilentHelp"
+    //  ----
+    //  133  < 160 single-SMS limit
     final message =
-        'EMERGENCY\n\nI need help.\n\nI use Ugandan Sign Language (UgSL) and may not hear spoken communication.\n\nMy location: $address\nGPS: $coordinates\n\nPlease assist me or contact my emergency contact.\n\n— SilentHelp';
+        'SOS! I am Deaf (UgSL). Need help!\n'
+        'Loc: $safeAddress\n'
+        'GPS: $coordinates\n'
+        '-SilentHelp';
 
     try {
-      final Uri smsUri = Uri.parse(
-        'sms:${phoneNumber.isNotEmpty ? phoneNumber : ''}?body=${Uri.encodeComponent(message)}',
+      await SmsService.sendSms(
+        phone: phoneNumber.isNotEmpty ? phoneNumber : '',
+        message: message,
       );
-
-      final launched = await launchUrl(
-        smsUri,
-        mode: LaunchMode.externalApplication,
-      );
-
-      if (!launched) {
-        throw 'Could not launch SMS';
+    } on SmsPermissionException catch (e) {
+      // Permission permanently denied — surface to the user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: AppColors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
       }
+      rethrow;
     } catch (e) {
       // ignore: avoid_print
       print('SMS send error: $e');
       rethrow;
     }
-  }
-
-  /// Background task: Try to get better accuracy location and send updated SOS
-  void _improveLocationInBackground(
-    BuildContext context,
-    WidgetRef ref,
-    String emContactNumber,
-    CachedLocation? originalLocation,
-  ) {
-    // Show status that we're improving location
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('📡 Improving location accuracy...'),
-        backgroundColor: Color(0xFFFFA500),
-        duration: const Duration(seconds: 5),
-      ),
-    );
-
-    // Run in background without blocking UI
-    Future.delayed(const Duration(milliseconds: 500)).then((_) async {
-      try {
-        final betterLocation =
-            await LocationService.getHighAccuracyLocation();
-
-        if (betterLocation != null &&
-            betterLocation.accuracy <
-                (originalLocation?.accuracy ?? 1000)) {
-          // We got a better location, update the cache and send updated SOS
-          final cachedLocation = CachedLocation(
-            latitude: betterLocation.latitude,
-            longitude: betterLocation.longitude,
-            accuracy: betterLocation.accuracy,
-            address: originalLocation?.address,
-            timestamp: DateTime.now(),
-          );
-
-          // Update UI
-          ref
-              .read(emergencyProvider.notifier)
-              .setPosition(Position(
-                latitude: betterLocation.latitude,
-                longitude: betterLocation.longitude,
-                timestamp: DateTime.now(),
-                accuracy: betterLocation.accuracy,
-                altitude: 0,
-                altitudeAccuracy: 0,
-                heading: 0,
-                headingAccuracy: 0,
-                speed: 0,
-                speedAccuracy: 0,
-              ));
-
-          ref
-              .read(emergencyProvider.notifier)
-              .setLocationLoading(false);
-
-          // Try to send updated SOS
-          final updatedAddress = cachedLocation.address?.isNotEmpty == true
-              ? cachedLocation.address!
-              : 'Unknown location';
-          final updatedCoordinates =
-              '${cachedLocation.latitude.toStringAsFixed(4)}, ${cachedLocation.longitude.toStringAsFixed(4)}';
-          
-          if (mounted) {
-            await _sendSmsMessage(
-              context,
-              emContactNumber,
-              updatedAddress,
-              updatedCoordinates,
-              ref.read(emergencyProvider.notifier),
-            );
-
-            // Show success message
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                    '🟢 Updated location sent (${betterLocation.accuracy.toStringAsFixed(0)}m accuracy)'),
-                backgroundColor: Color(0xFF4CAF50),
-                duration: const Duration(seconds: 3),
-              ),
-            );
-          }
-
-          // ignore: avoid_print
-          print(
-              'Background: Sent updated SOS with better location (${betterLocation.accuracy.toStringAsFixed(0)}m)');
-        }
-      } catch (e) {
-        // ignore: avoid_print
-        print('Background location improvement failed: $e');
-        // Silently fail - don't disturb user
-      }
-    });
   }
 
   Future<void> _makeCall(String number) async {
