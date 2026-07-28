@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,12 +19,23 @@ class TalkScreen extends ConsumerStatefulWidget {
 }
 
 class _TalkScreenState extends ConsumerState<TalkScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late stt.SpeechToText _speechToText;
   late final TextToSpeechService _tts;
   late TextEditingController _inputController;
   late ScrollController _scrollController;
   late AnimationController _micPulse;
+  late AnimationController _holdProgress;
+
+  bool _isHolding = false;
+  bool _isLocked = false;
+  bool _restartInFlight = false;
+  String _carriedTranscript = '';
+  Timer? _sttWatchdog;
+  Timer? _pendingTapStop;
+  DateTime? _pointerDownAt;
+
+  bool get _shouldKeepListening => _isHolding || _isLocked;
 
   @override
   void initState() {
@@ -35,6 +48,14 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
+    _holdProgress = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 60),
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          _handleHoldTimeout();
+        }
+      });
     _initSpeech();
     _initTts();
   }
@@ -43,10 +64,18 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
     try {
       await _speechToText.initialize(
         onError: (e) => debugPrint('STT error: $e'),
-        onStatus: (s) => debugPrint('STT status: $s'),
+        onStatus: _handleSttStatus,
       );
     } catch (e) {
       debugPrint('STT init error: $e');
+    }
+  }
+
+  void _handleSttStatus(String status) {
+    debugPrint('STT status: $status');
+    if (!_shouldKeepListening) return;
+    if (status == 'done' || status == 'notListening') {
+      _restartListening(force: true);
     }
   }
 
@@ -56,11 +85,14 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
 
   @override
   void dispose() {
+    _pendingTapStop?.cancel();
+    _sttWatchdog?.cancel();
     _speechToText.stop();
     _tts.stop();
     _inputController.dispose();
     _scrollController.dispose();
     _micPulse.dispose();
+    _holdProgress.dispose();
     super.dispose();
   }
 
@@ -80,47 +112,124 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
 
   // ── Mic / STT ───────────────────────────────────────────────────────────
 
-  void _toggleListening() async {
+  Future<void> _startHoldListening() async {
+    if (_shouldKeepListening) return;
+    _isHolding = true;
+    _isLocked = false;
+    _pendingTapStop?.cancel();
+    _pendingTapStop = null;
+    _pointerDownAt = null;
+    _restartInFlight = false;
+    _carriedTranscript = '';
+
     final notifier = ref.read(talkProvider.notifier);
+    notifier.setLiveTranscript('');
 
-    if (_speechToText.isListening) {
-      // Tap again → stop and commit whatever was transcribed
-      HapticFeedback.lightImpact();
-      _speechToText.stop();
-      _micPulse.stop();
-      notifier.setIsListening(false);
-
-      final live = ref.read(talkProvider).liveTranscript;
-      if (live.trim().isNotEmpty) {
-        notifier.addHearingMessage(live);
-        _scrollToBottom();
-      } else {
-        notifier.setLiveTranscript('');
-      }
-    } else {
-      final available = await _speechToText.initialize();
-      if (!available) return;
-
-      HapticFeedback.lightImpact();
-      notifier.setIsListening(true);
-      _micPulse.repeat(reverse: true);
-
-      _speechToText.listen(
-        onResult: (result) {
-          notifier.setLiveTranscript(result.recognizedWords);
-          _scrollToBottom();
-
-          // Auto-commit when the engine marks a final result
-          if (result.finalResult && result.recognizedWords.trim().isNotEmpty) {
-            _speechToText.stop();
-            _micPulse.stop();
-            notifier.setIsListening(false);
-            notifier.addHearingMessage(result.recognizedWords);
-            _scrollToBottom();
-          }
-        },
-      );
+    final available = await _speechToText.initialize(
+      onError: (e) => debugPrint('STT error: $e'),
+      onStatus: _handleSttStatus,
+    );
+    if (!available) {
+      _isHolding = false;
+      return;
     }
+
+    HapticFeedback.lightImpact();
+    notifier.setIsListening(true);
+    _micPulse.repeat(reverse: true);
+    _holdProgress.forward(from: 0);
+    _startWatchdog();
+
+    await _speechToText.listen(onResult: _onSttResult);
+  }
+
+  void _onSttResult(dynamic result) {
+    final notifier = ref.read(talkProvider.notifier);
+    final recognized = result.recognizedWords.toString().trim();
+    if (recognized.isEmpty && _carriedTranscript.isEmpty) return;
+
+    final combined = (_carriedTranscript.isEmpty
+            ? recognized
+            : '$_carriedTranscript $recognized')
+        .trim();
+    notifier.setLiveTranscript(combined);
+    _scrollToBottom();
+
+    if (result.finalResult == true && recognized.isNotEmpty) {
+      _carriedTranscript = combined;
+    }
+  }
+
+  Future<void> _restartListening({bool force = false}) async {
+    if (!_shouldKeepListening) return;
+    if (_holdProgress.isCompleted) return;
+    if (!force && _speechToText.isListening) return;
+    if (_restartInFlight) return;
+
+    _restartInFlight = true;
+    try {
+      if (force) {
+        try {
+          await _speechToText.stop();
+        } catch (_) {}
+      }
+      await Future.delayed(const Duration(milliseconds: 120));
+      if (!_shouldKeepListening) return;
+      if (_holdProgress.isCompleted) return;
+      if (!force && _speechToText.isListening) return;
+      await _speechToText.listen(onResult: _onSttResult);
+    } catch (_) {
+    } finally {
+      _restartInFlight = false;
+    }
+  }
+
+  void _startWatchdog() {
+    _sttWatchdog?.cancel();
+    _sttWatchdog = Timer.periodic(const Duration(milliseconds: 450), (_) {
+      if (!_shouldKeepListening) return;
+      if (_holdProgress.isCompleted) return;
+      if (_speechToText.isListening) return;
+      _restartListening();
+    });
+  }
+
+  void _releaseHoldWithoutStopping() {
+    _isHolding = false;
+    _pointerDownAt = null;
+  }
+
+  void _stopHoldListening({required bool commit}) {
+    if (!_shouldKeepListening && !_speechToText.isListening) return;
+
+    _isHolding = false;
+    _isLocked = false;
+    _pendingTapStop?.cancel();
+    _pendingTapStop = null;
+    _pointerDownAt = null;
+    _sttWatchdog?.cancel();
+    _speechToText.stop();
+    _micPulse.stop();
+    _holdProgress.stop();
+
+    final notifier = ref.read(talkProvider.notifier);
+    notifier.setIsListening(false);
+
+    final live = ref.read(talkProvider).liveTranscript.trim();
+    if (commit && live.isNotEmpty) {
+      notifier.addHearingMessage(live);
+    } else {
+      notifier.setLiveTranscript('');
+    }
+
+    _carriedTranscript = '';
+    _scrollToBottom();
+  }
+
+  void _handleHoldTimeout() {
+    if (!_shouldKeepListening) return;
+    HapticFeedback.mediumImpact();
+    _stopHoldListening(commit: true);
   }
 
   // ── Send (deaf user) ────────────────────────────────────────────────────
@@ -329,7 +438,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
             ),
             SizedBox(height: 16.h),
             Text(
-              'Tap 🎙 to hear what they say\nor type your reply below',
+              'Hold 🎙 to hear what they say\nor type your reply below',
               style: AppTextStyles.bodySmall.copyWith(
                 color: AppColors.textMuted,
               ),
@@ -362,50 +471,154 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
           children: [
             // Mic button
             AnimatedBuilder(
-              animation: _micPulse,
+              animation: Listenable.merge([_micPulse, _holdProgress]),
               builder: (_, __) {
                 final glow = state.isListening ? _micPulse.value : 0.0;
-                return GestureDetector(
-                  onTap: _toggleListening,
-                  child: Container(
-                    width: 48.w,
-                    height: 48.w,
-                    margin: EdgeInsets.only(bottom: 1.h),
-                    decoration: BoxDecoration(
-                      color: state.isListening
-                          ? AppColors.teal
-                          : AppColors.card,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: state.isListening
-                            ? AppColors.teal
-                            : AppColors.border,
-                        width: 2,
-                      ),
-                      boxShadow: state.isListening
-                          ? [
-                              BoxShadow(
-                                color: AppColors.teal
-                                    .withValues(alpha: 0.25 + glow * 0.45),
-                                blurRadius: 6 + glow * 10,
-                                spreadRadius: glow * 4,
+                final progress =
+                    state.isListening ? (1.0 - _holdProgress.value) : 0.0;
+                final secondsLeft = state.isListening
+                    ? (60 * (1.0 - _holdProgress.value)).ceil().clamp(0, 60)
+                    : 0;
+                return Listener(
+                  behavior: HitTestBehavior.opaque,
+                  onPointerDown: (e) {
+                    if (state.isListening && _isLocked && !_isHolding) {
+                      _stopHoldListening(commit: true);
+                      return;
+                    }
+                    if (state.isListening &&
+                        !_isLocked &&
+                        !_isHolding &&
+                        _pendingTapStop != null) {
+                      _pendingTapStop?.cancel();
+                      _pendingTapStop = null;
+                      setState(() {
+                        _isLocked = true;
+                      });
+                      HapticFeedback.mediumImpact();
+                      return;
+                    }
+
+                    _pointerDownAt = DateTime.now();
+                    _startHoldListening();
+                  },
+                  onPointerUp: (_) {
+                    if (_isLocked) {
+                      _releaseHoldWithoutStopping();
+                      return;
+                    }
+                    if (!_isHolding) return;
+
+                    final downAt = _pointerDownAt;
+                    final heldMs = downAt == null
+                        ? 9999
+                        : DateTime.now().difference(downAt).inMilliseconds;
+
+                    if (heldMs < 220) {
+                      _releaseHoldWithoutStopping();
+                      _pendingTapStop?.cancel();
+                      _pendingTapStop = Timer(
+                        const Duration(milliseconds: 260),
+                        () {
+                          if (!_isLocked) _stopHoldListening(commit: true);
+                        },
+                      );
+                      return;
+                    }
+
+                    _stopHoldListening(commit: true);
+                  },
+                  onPointerCancel: (_) {
+                    if (_isLocked) {
+                      _releaseHoldWithoutStopping();
+                      return;
+                    }
+                    _stopHoldListening(commit: true);
+                  },
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (state.isListening)
+                        SizedBox(
+                          width: 70.w,
+                          height: 70.w,
+                          child: CircularProgressIndicator(
+                            value: progress.clamp(0.0, 1.0),
+                            strokeWidth: 3,
+                            backgroundColor:
+                                AppColors.border.withValues(alpha: 0.45),
+                            valueColor:
+                                const AlwaysStoppedAnimation(AppColors.teal),
+                          ),
+                        ),
+                      Container(
+                        width: 58.w,
+                        height: 58.w,
+                        margin: EdgeInsets.only(bottom: 1.h),
+                        decoration: BoxDecoration(
+                          color:
+                              state.isListening ? AppColors.teal : AppColors.card,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: state.isListening
+                                ? AppColors.teal
+                                : AppColors.border,
+                            width: 2,
+                          ),
+                          boxShadow: state.isListening
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.teal.withValues(
+                                        alpha: 0.25 + glow * 0.45),
+                                    blurRadius: 6 + glow * 10,
+                                    spreadRadius: glow * 4,
+                                  ),
+                                ]
+                              : [],
+                        ),
+                        child: state.isListening
+                            ? Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    '${secondsLeft}s',
+                                    style: AppTextStyles.caption.copyWith(
+                                      color: AppColors.background
+                                          .withValues(alpha: 0.85),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11.sp,
+                                    ),
+                                  ),
+                                  if (_isLocked) ...[
+                                    SizedBox(height: 2.h),
+                                    Icon(
+                                      Icons.lock,
+                                      color: AppColors.background
+                                          .withValues(alpha: 0.75),
+                                      size: 12.sp,
+                                    ),
+                                  ],
+                                  SizedBox(height: 2.h),
+                                  Icon(
+                                    Icons.mic,
+                                    color: AppColors.background,
+                                    size: 22.sp,
+                                  ),
+                                ],
+                              )
+                            : Icon(
+                                Icons.mic_none,
+                                color: AppColors.teal,
+                                size: 24.sp,
                               ),
-                            ]
-                          : [],
-                    ),
-                    child: Icon(
-                      state.isListening ? Icons.mic : Icons.mic_none,
-                      color: state.isListening
-                          ? AppColors.background
-                          : AppColors.teal,
-                      size: 22.sp,
-                    ),
+                      ),
+                    ],
                   ),
                 );
               },
             ),
 
-            SizedBox(width: 8.w),
+            SizedBox(width: 12.w),
 
             // Text field
             Expanded(
@@ -444,7 +657,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
               ),
             ),
 
-            SizedBox(width: 8.w),
+            SizedBox(width: 12.w),
 
             // Send button
             GestureDetector(
@@ -453,8 +666,8 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
                   : _sendDeafMessage,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                width: 48.w,
-                height: 48.w,
+                width: 58.w,
+                height: 58.w,
                 margin: EdgeInsets.only(bottom: 1.h),
                 decoration: BoxDecoration(
                   color: _inputController.text.trim().isEmpty
@@ -465,7 +678,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
                 child: Icon(
                   Icons.send_rounded,
                   color: AppColors.background,
-                  size: 20.sp,
+                  size: 22.sp,
                 ),
               ),
             ),
