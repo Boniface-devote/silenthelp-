@@ -717,39 +717,62 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
           );
 
       // IMMEDIATE SOS SEND
-      await _sendSmsMessage(
+      final sendResult = await _sendSmsMessage(
         context,
         emContactNumber,
         address,
         coordinates,
       );
 
-      // Log: SOS opened in SMS app
+      // Log: actual SMS send/delivery outcome
       await ref.read(sosLogProvider.notifier).addLogEntry(
             SOSLogEntry(
               timestamp: DateTime.now(),
               message: 'To: $emContactNumber | Location: $address',
-              status: 'opened_in_sms',
+              status: sendResult.status,
             ),
           );
 
-      // SUCCESS: stamp time, update state, fire haptics
-      setState(() => _sentAt = DateTime.now());
-      ref.read(emergencyProvider.notifier).setSosSent(true);
+      final bool wasSent = sendResult.sent || sendResult.status == 'sms_app_opened';
+      if (wasSent) {
+        setState(() => _sentAt = DateTime.now());
+        ref.read(emergencyProvider.notifier).setSosSent(true);
+      }
 
-      // Strong vibration feedback for SMS confirmation
-      await HapticFeedback.heavyImpact();
-      await Future.delayed(const Duration(milliseconds: 150));
-      await HapticFeedback.heavyImpact();
+      if (sendResult.deliveryConfirmed) {
+        await HapticFeedback.heavyImpact();
+        await Future.delayed(const Duration(milliseconds: 150));
+        await HapticFeedback.heavyImpact();
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('✅ SOS sent successfully'),
-            backgroundColor: const Color(0xFF4CAF50),
-            duration: const Duration(seconds: 4),
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('✅ SOS delivered successfully'),
+              backgroundColor: const Color(0xFF4CAF50),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      } else if (sendResult.sent) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('✅ SOS sent. Delivery not confirmed yet.'),
+              backgroundColor: const Color(0xFF4CAF50),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      } else if (sendResult.status == 'sms_app_opened') {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('SOS was rerouted to the default SMS app. Please send the message there.'),
+              backgroundColor: const Color(0xFFFFA000),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
       }
 
       // Location continues refreshing in the background for UI display only.
@@ -773,7 +796,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
   }
 
   /// Build human-readable location text from CachedLocation (includes both address and coordinates)
-  Future<void> _sendSmsMessage(
+  Future<SmsSendResult> _sendSmsMessage(
     BuildContext context,
     String phoneNumber,
     String address,
@@ -802,12 +825,11 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
         '-SilentHelp';
 
     try {
-      await SmsService.sendSms(
+      return await SmsService.sendSms(
         phone: phoneNumber.isNotEmpty ? phoneNumber : '',
         message: message,
       );
     } on SmsPermissionException catch (e) {
-      // Permission permanently denied — surface to the user
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

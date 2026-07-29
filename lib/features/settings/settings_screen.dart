@@ -831,7 +831,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildSOSLogItem(SOSLogEntry log, bool isFirst, bool isLast) {
-    final isOpened = log.status == 'opened_in_sms';
+    final isOpened = log.status == 'opened_in_sms' || log.status == 'sms_app_opened';
+    final isDelivered = log.status == 'delivered';
+    final isFailed = log.status == 'failed' || log.status == 'delivery_failed';
     final formattedDate = '${log.timestamp.month}/${log.timestamp.day}/${log.timestamp.year} ${log.timestamp.hour.toString().padLeft(2, '0')}:${log.timestamp.minute.toString().padLeft(2, '0')}';
 
     return Column(
@@ -878,9 +880,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     SizedBox(height: 4.h),
                     Text(
-                      isOpened ? context.tr('sos_log_opened') : context.tr('sos_log_prepared'),
+                      isDelivered
+                          ? 'Delivered'
+                          : isFailed
+                              ? 'Failed'
+                              : isOpened
+                                  ? context.tr('sos_log_opened')
+                                  : context.tr('sos_log_prepared'),
                       style: AppTextStyles.caption.copyWith(
-                        color: isOpened ? AppColors.teal : AppColors.yellow,
+                        color: isDelivered
+                            ? AppColors.teal
+                            : isFailed
+                                ? AppColors.red
+                                : isOpened
+                                    ? AppColors.teal
+                                    : AppColors.yellow,
                       ),
                     ),
                   ],

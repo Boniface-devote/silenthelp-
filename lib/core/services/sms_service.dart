@@ -4,22 +4,39 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// Result from an SMS send operation.
+///
+/// `sent` indicates whether Android accepted the SMS send request.
+/// `deliveryConfirmed` indicates whether a delivery report was received.
+class SmsSendResult {
+  final bool sent;
+  final bool deliveryConfirmed;
+  final String status;
+  final String? errorMessage;
+
+  const SmsSendResult({
+    required this.sent,
+    required this.deliveryConfirmed,
+    required this.status,
+    this.errorMessage,
+  });
+}
+
 /// Sends an SMS message.
 ///
-/// On Android: requests SEND_SMS permission and fires the message directly via
-/// SmsManager (no SMS app opens, no user confirmation needed).
+/// On Android: requests SEND_SMS permission and dispatches the message through
+/// native SmsManager, using send and delivery intents to confirm send and
+/// delivery status.
 ///
 /// On iOS / Web / other platforms: falls back to opening the native SMS app
-/// with the number and body pre-filled (the user still taps Send there).
+/// with the number and body pre-filled.
 class SmsService {
   static const _channel = MethodChannel('com.example.silenthelp/sms');
 
   /// Sends [message] to [phone].
   ///
-  /// Returns `true` if the message was handed off to the OS successfully.
-  /// Throws a [SmsException] if permission is permanently denied or the
-  /// native call fails without a usable fallback.
-  static Future<bool> sendSms({
+  /// Returns structured send/delivery state rather than a simple success bool.
+  static Future<SmsSendResult> sendSms({
     required String phone,
     required String message,
   }) async {
@@ -32,7 +49,7 @@ class SmsService {
 
   // ── Android path ─────────────────────────────────────────────────────────
 
-  static Future<bool> _sendAndroid({
+  static Future<SmsSendResult> _sendAndroid({
     required String phone,
     required String message,
   }) async {
@@ -40,14 +57,27 @@ class SmsService {
 
     if (status.isGranted) {
       try {
-        final reply = await _channel.invokeMethod<String>('sendSms', {
+        final reply = await _channel.invokeMapMethod<String, dynamic>('sendSms', {
           'phone': phone,
           'message': message,
         });
-        return reply == 'sent';
+
+        if (reply == null) {
+          return const SmsSendResult(
+            sent: false,
+            deliveryConfirmed: false,
+            status: 'platform_no_response',
+            errorMessage: 'No response from SMS platform channel.',
+          );
+        }
+
+        return SmsSendResult(
+          sent: reply['sent'] == true,
+          deliveryConfirmed: reply['delivered'] == true,
+          status: reply['status']?.toString() ?? 'unknown',
+          errorMessage: reply['error']?.toString(),
+        );
       } on PlatformException catch (e) {
-        // Native call failed — fall back to the SMS app so the message
-        // is never silently lost.
         debugPrint('SmsService: native send failed (${e.code}: ${e.message}), '
             'falling back to SMS app.');
         return _openSmsApp(phone: phone, message: message);
@@ -55,7 +85,6 @@ class SmsService {
     }
 
     if (status.isPermanentlyDenied) {
-      // User has blocked the permission; open app settings and fall back.
       await openAppSettings();
       throw SmsPermissionException(
         'SEND_SMS permission permanently denied. '
@@ -63,19 +92,24 @@ class SmsService {
       );
     }
 
-    // Denied (but not permanently) — fall back silently.
     debugPrint('SmsService: SEND_SMS permission denied, falling back to SMS app.');
     return _openSmsApp(phone: phone, message: message);
   }
 
   // ── Fallback: open native SMS app ────────────────────────────────────────
 
-  static Future<bool> _openSmsApp({
+  static Future<SmsSendResult> _openSmsApp({
     required String phone,
     required String message,
   }) async {
     final uri = Uri.parse('sms:$phone?body=${Uri.encodeComponent(message)}');
-    return launchUrl(uri, mode: LaunchMode.externalApplication);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    return SmsSendResult(
+      sent: false,
+      deliveryConfirmed: false,
+      status: opened ? 'sms_app_opened' : 'sms_app_open_failed',
+      errorMessage: opened ? null : 'Could not open SMS app.',
+    );
   }
 }
 
