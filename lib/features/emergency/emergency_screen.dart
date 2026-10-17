@@ -107,7 +107,12 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
   Future<void> _sendSafeStatus(AsyncValue<UserProfile> profileAsync) async {
     final profile = profileAsync.valueOrNull;
     if (profile == null) return;
-    final contacts = _trustedContacts(profile, includeMedical: false);
+    final contacts = await _chooseCheckInRecipients(
+      allContacts: _trustedContacts(profile),
+      defaults: _trustedContacts(profile, includeMedical: false),
+      title: 'Send safe check-in to',
+    );
+    if (contacts == null) return;
     await _sendCheckIn(
       contacts: contacts,
       status: 'SAFE',
@@ -176,19 +181,21 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     if (selection == null) return;
 
     final urgent = selection.$2 == 'Danger now';
-    final contacts = _trustedContacts(profile, includeMedical: urgent);
-    if (contacts.isEmpty) {
-      _showCheckInMessage('Add a trusted contact in Settings first.');
-      return;
-    }
+    final contacts = await _chooseCheckInRecipients(
+      allContacts: _trustedContacts(profile),
+      defaults: _trustedContacts(profile, includeMedical: urgent),
+      title: 'Send help request to',
+    );
+    if (contacts == null) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Send help request?'),
         content: Text(
-          'This sends your ${selection.$1} request to ${contacts.length} '
-          'trusted contact(s), with your current location if available.',
+          'This sends your ${selection.$1} request to '
+          '${contacts.map((contact) => contact.name.isEmpty ? contact.role : contact.name).join(', ')}, '
+          'with your current location if available.',
         ),
         actions: [
           TextButton(
@@ -211,15 +218,86 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     );
   }
 
-  List<({String name, String number})> _trustedContacts(
+  Future<List<({String name, String role, String number})>?>
+      _chooseCheckInRecipients({
+    required List<({String name, String role, String number})> allContacts,
+    required List<({String name, String role, String number})> defaults,
+    required String title,
+  }) async {
+    if (allContacts.isEmpty) {
+      _showCheckInMessage('Add a trusted contact in Settings first.');
+      return null;
+    }
+
+    final selectedNumbers = defaults.map((contact) => contact.number).toSet();
+    return showDialog<List<({String name, String role, String number})>>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final contact in allContacts)
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: selectedNumbers.contains(contact.number),
+                  title: Text(contact.name.isEmpty ? contact.role : contact.name),
+                  subtitle: Text('${contact.role} · ${contact.number}'),
+                  onChanged: (selected) => setDialogState(() {
+                    if (selected == true) {
+                      selectedNumbers.add(contact.number);
+                    } else {
+                      selectedNumbers.remove(contact.number);
+                    }
+                  }),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: selectedNumbers.isEmpty
+                  ? null
+                  : () => Navigator.pop(
+                        dialogContext,
+                        allContacts
+                            .where((contact) =>
+                                selectedNumbers.contains(contact.number))
+                            .toList(),
+                      ),
+              child: Text('Continue (${selectedNumbers.length})'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<({String name, String role, String number})> _trustedContacts(
     UserProfile profile, {
     bool includeMedical = true,
   }) {
-    final contacts = <({String name, String number})>[
-      (name: profile.emContactName, number: profile.emContactNumber),
-      (name: profile.secondContactName, number: profile.secondContactNumber),
+    final contacts = <({String name, String role, String number})>[
+      (
+        name: profile.emContactName,
+        role: 'Primary contact',
+        number: profile.emContactNumber,
+      ),
+      (
+        name: profile.secondContactName,
+        role: profile.secondContactLabel,
+        number: profile.secondContactNumber,
+      ),
       if (includeMedical)
-        (name: profile.medicalContactName, number: profile.medicalContactNumber),
+        (
+          name: profile.medicalContactName,
+          role: profile.medicalContactLabel,
+          number: profile.medicalContactNumber,
+        ),
     ];
     final seen = <String>{};
     return contacts.where((contact) {
@@ -230,7 +308,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
   }
 
   Future<void> _sendCheckIn({
-    required List<({String name, String number})> contacts,
+    required List<({String name, String role, String number})> contacts,
     required String status,
     required String category,
   }) async {
@@ -491,6 +569,17 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
               onPressed: () => context.go(AppConstants.routeTrustedCircle),
               icon: const Icon(Icons.group_outlined),
               label: const Text('Manage Trusted Circle and escalation'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.teal,
+                side: const BorderSide(color: AppColors.teal),
+                minimumSize: Size(double.infinity, 48.h),
+              ),
+            ),
+            SizedBox(height: 12.h),
+            OutlinedButton.icon(
+              onPressed: () => context.go(AppConstants.routeNearbyPlaces),
+              icon: const Icon(Icons.map_outlined),
+              label: const Text('Find nearby support places'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.teal,
                 side: const BorderSide(color: AppColors.teal),

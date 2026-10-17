@@ -17,6 +17,7 @@ class AppConstants {
   static const String routeLearn = '/learn';
   static const String routeSettings = '/settings';
   static const String routeTrustedCircle = '/trusted-circle';
+  static const String routeNearbyPlaces = '/nearby-places';
 
   // Emergency numbers
   static const String policeNumber = '+256 999';

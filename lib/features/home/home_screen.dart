@@ -50,21 +50,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           'SILENTHELP',
           style: AppTextStyles.heading2,
         ),
-        actions: [
-          Padding(
-            padding: EdgeInsets.only(right: 16.w),
-            child: GestureDetector(
-              onTap: () {
-                context.go(AppConstants.routeSettings);
-              },
-              child: Icon(
-                Icons.settings,
-                size: 28.sp,
-                color: AppColors.teal,
-              ),
-            ),
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -154,6 +139,55 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
               ),
 
+              SizedBox(height: 12.h),
+
+              InkWell(
+                onTap: () => context.go(AppConstants.routeNearbyPlaces),
+                borderRadius: BorderRadius.circular(16.r),
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(16.w),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(16.r),
+                    border: Border.all(color: AppColors.blue),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(10.w),
+                        decoration: BoxDecoration(
+                          color: AppColors.blue.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        child: Icon(
+                          Icons.map_outlined,
+                          color: AppColors.blue,
+                          size: 26.sp,
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Trusted Places', style: AppTextStyles.labelLarge),
+                            SizedBox(height: 2.h),
+                            Text(
+                              'Find safe spaces, clinics, hospitals, and police',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: AppColors.blue),
+                    ],
+                  ),
+                ),
+              ),
+
               SizedBox(height: 24.h),
 
               // Feature Grid (4 items)
@@ -214,40 +248,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     onTap: () => context.go(AppConstants.routeLearn),
                   ),
                 ],
-              ),
-
-              SizedBox(height: 12.h),
-
-              // Settings button below
-              GestureDetector(
-                onTap: () => context.go(AppConstants.routeSettings),
-                child: Container(
-                  padding: EdgeInsets.all(12.w),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(16.r),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.settings,
-                        color: AppColors.teal,
-                        size: 24.sp,
-                      ),
-                      SizedBox(width: 12.w),
-                      Expanded(
-                        child: Text(
-                          context.tr('settings_title'),
-                          style: AppTextStyles.labelMedium.copyWith(fontSize: 12.sp),
-                          textAlign: TextAlign.start,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ),
 
               SizedBox(height: 40.h),

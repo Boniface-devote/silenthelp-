@@ -50,14 +50,14 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold> {
             label: 'Talk',
           ),
           NavigationDestination(
-            icon: Icon(Icons.message_outlined, size: 24.sp),
-            selectedIcon: Icon(Icons.message, size: 24.sp),
-            label: 'Phrases',
+            icon: Icon(Icons.map_outlined, size: 24.sp),
+            selectedIcon: Icon(Icons.map, size: 24.sp),
+            label: 'Places',
           ),
           NavigationDestination(
-            icon: Icon(Icons.credit_card_outlined, size: 24.sp),
-            selectedIcon: Icon(Icons.credit_card, size: 24.sp),
-            label: 'Card',
+            icon: Icon(Icons.settings_outlined, size: 24.sp),
+            selectedIcon: Icon(Icons.settings, size: 24.sp),
+            label: 'Settings',
           ),
         ],
       ),
@@ -71,8 +71,8 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold> {
     if (location == AppConstants.routeEmergency ||
         location == AppConstants.routeTrustedCircle) return 1;
     if (location == AppConstants.routeTalk) return 2;
-    if (location == AppConstants.routePhrases) return 3;
-    if (location == AppConstants.routeIdCard) return 4;
+    if (location == AppConstants.routeNearbyPlaces) return 3;
+    if (location == AppConstants.routeSettings) return 4;
     
     return 0;
   }
@@ -89,10 +89,10 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold> {
         context.go(AppConstants.routeTalk);
         break;
       case 3:
-        context.go(AppConstants.routePhrases);
+        context.go(AppConstants.routeNearbyPlaces);
         break;
       case 4:
-        context.go(AppConstants.routeIdCard);
+        context.go(AppConstants.routeSettings);
         break;
     }
   }

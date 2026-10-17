@@ -12,6 +12,7 @@ import '../../features/id_card/id_card_screen.dart';
 import '../../features/learn/learn_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/emergency/trusted_circle_screen.dart';
+import '../../features/emergency/nearby_places_screen.dart';
 import '../../shared/widgets/bottom_nav.dart';
 
 // Check if onboarding is complete
@@ -108,6 +109,13 @@ final GoRouter appRouter = GoRouter(
           name: 'trusted-circle',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: TrustedCircleScreen(),
+          ),
+        ),
+        GoRoute(
+          path: AppConstants.routeNearbyPlaces,
+          name: 'nearby-places',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: NearbyPlacesScreen(),
           ),
         ),
       ],
