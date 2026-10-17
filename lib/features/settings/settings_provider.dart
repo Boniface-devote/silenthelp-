@@ -35,13 +35,13 @@ class UserProfile {
   // Default profile
   static UserProfile defaultProfile() {
     return UserProfile(
-      name: 'Your Name',
+      name: '',
       condition: 'DEAF',
-      phone: '+2567XXXXXXXX',
-      bloodType: '??',
+      phone: '',
+      bloodType: '',
       medicalNote: 'I communicate via text',
-      emContactName: 'emergency contact name',
-      emContactNumber: '+2567XXXXXXXX',
+      emContactName: '',
+      emContactNumber: '',
       secondContactName: '',
       secondContactNumber: '',
       secondContactLabel: 'Family / Teacher',
@@ -73,19 +73,21 @@ class UserProfile {
   // Create from Map
   static UserProfile fromMap(Map<String, dynamic> map) {
     return UserProfile(
-      name: map['name'] as String? ?? 'Your Name',
+      name: map['name'] as String? ?? '',
       condition: map['condition'] as String? ?? 'DEAF',
-      phone: map['phone'] as String? ?? '+2567XXXXXXXX',
-      bloodType: map['bloodType'] as String? ?? '??',
+      phone: map['phone'] as String? ?? '',
+      bloodType: map['bloodType'] as String? ?? '',
       medicalNote: map['medicalNote'] as String? ?? 'I communicate via text',
-      emContactName: map['emContactName'] as String? ?? 'Dr. Sarah Nakato',
-      emContactNumber: map['emContactNumber'] as String? ?? '+2567XXXXXXXX',
+      emContactName: map['emContactName'] as String? ?? '',
+      emContactNumber: map['emContactNumber'] as String? ?? '',
       secondContactName: map['secondContactName'] as String? ?? '',
       secondContactNumber: map['secondContactNumber'] as String? ?? '',
-      secondContactLabel: map['secondContactLabel'] as String? ?? 'Family / Teacher',
+      secondContactLabel:
+          map['secondContactLabel'] as String? ?? 'Family / Teacher',
       medicalContactName: map['medicalContactName'] as String? ?? '',
       medicalContactNumber: map['medicalContactNumber'] as String? ?? '',
-      medicalContactLabel: map['medicalContactLabel'] as String? ?? 'Doctor / Nurse / Hospital',
+      medicalContactLabel:
+          map['medicalContactLabel'] as String? ?? 'Doctor / Nurse / Hospital',
     );
   }
 }
@@ -94,10 +96,10 @@ class SettingsNotifier extends AsyncNotifier<UserProfile> {
   @override
   Future<UserProfile> build() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Try to load from SharedPreferences
     final name = prefs.getString('name');
-    
+
     if (name == null) {
       // Return default profile if nothing saved
       return UserProfile.defaultProfile();
@@ -107,17 +109,19 @@ class SettingsNotifier extends AsyncNotifier<UserProfile> {
     return UserProfile(
       name: name,
       condition: prefs.getString('condition') ?? 'DEAF',
-      phone: prefs.getString('phone') ?? '+2567XXXXXXXX',
-      bloodType: prefs.getString('bloodType') ?? 'O+',
+      phone: prefs.getString('phone') ?? '',
+      bloodType: prefs.getString('bloodType') ?? '',
       medicalNote: prefs.getString('medicalNote') ?? 'I communicate via text',
-      emContactName: prefs.getString('emContactName') ?? 'Dr. Sarah Nakato',
-      emContactNumber: prefs.getString('emContactNumber') ?? '+2567XXXXXXXX',
+      emContactName: prefs.getString('emContactName') ?? '',
+      emContactNumber: prefs.getString('emContactNumber') ?? '',
       secondContactName: prefs.getString('secondContactName') ?? '',
       secondContactNumber: prefs.getString('secondContactNumber') ?? '',
-      secondContactLabel: prefs.getString('secondContactLabel') ?? 'Family / Teacher',
+      secondContactLabel:
+          prefs.getString('secondContactLabel') ?? 'Family / Teacher',
       medicalContactName: prefs.getString('medicalContactName') ?? '',
       medicalContactNumber: prefs.getString('medicalContactNumber') ?? '',
-      medicalContactLabel: prefs.getString('medicalContactLabel') ?? 'Doctor / Nurse / Hospital',
+      medicalContactLabel:
+          prefs.getString('medicalContactLabel') ?? 'Doctor / Nurse / Hospital',
     );
   }
 
@@ -136,7 +140,7 @@ class SettingsNotifier extends AsyncNotifier<UserProfile> {
     await prefs.setString('medicalContactName', profile.medicalContactName);
     await prefs.setString('medicalContactNumber', profile.medicalContactNumber);
     await prefs.setString('medicalContactLabel', profile.medicalContactLabel);
-    
+
     state = AsyncValue.data(profile);
   }
 }
@@ -166,17 +170,20 @@ class ProfileCompletion {
   });
 
   factory ProfileCompletion.fromProfile(UserProfile profile) {
-    // Check if default values are still being used
-    final hasName = profile.name != 'Your Name' && profile.name.isNotEmpty;
-    final hasPhone = profile.phone != '+2567XXXXXXXX' && profile.phone.isNotEmpty;
-    final hasBloodType =
-        profile.bloodType != 'O+' && profile.bloodType.isNotEmpty;
+    final hasName =
+        profile.name.trim().isNotEmpty &&
+        profile.name.trim().toLowerCase() != 'your name';
+    final hasPhone = _isValidPhone(profile.phone);
+    final hasBloodType = _isValidBloodType(profile.bloodType);
+    final contactName = profile.emContactName.trim().toLowerCase();
     final hasEmergencyContactName =
-        profile.emContactName != 'Dr. Sarah Nakato' &&
-            profile.emContactName.isNotEmpty;
-    final hasEmergencyContactNumber =
-        profile.emContactNumber != '+2567XXXXXXXX' &&
-            profile.emContactNumber.isNotEmpty;
+        contactName.isNotEmpty &&
+        !{
+          'emergency contact name',
+          'dr. sarah nakato',
+          'contact name',
+        }.contains(contactName);
+    final hasEmergencyContactNumber = _isValidPhone(profile.emContactNumber);
 
     final isEmergencyContactComplete =
         hasEmergencyContactName && hasEmergencyContactNumber;
@@ -201,16 +208,36 @@ class ProfileCompletion {
       completionPercentage: completionPercentage,
     );
   }
+
+  static bool _isValidPhone(String value) {
+    final phone = value.trim();
+    if (phone.isEmpty || !RegExp(r'^\+?[0-9\s()-]+$').hasMatch(phone)) {
+      return false;
+    }
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    return digits.length >= 7 && digits.length <= 15;
+  }
+
+  static bool _isValidBloodType(String value) => {
+    'A+',
+    'A-',
+    'B+',
+    'B-',
+    'AB+',
+    'AB-',
+    'O+',
+    'O-',
+  }.contains(value.trim().toUpperCase());
 }
 
 // Provider for profile completion
-final profileCompletionProvider =
-    FutureProvider<ProfileCompletion>((ref) async {
+final profileCompletionProvider = FutureProvider<ProfileCompletion>((
+  ref,
+) async {
   final profileAsync = ref.watch(settingsProvider);
   return profileAsync.when(
     data: (profile) => ProfileCompletion.fromProfile(profile),
-    loading: () =>
-        ProfileCompletion.fromProfile(UserProfile.defaultProfile()),
+    loading: () => ProfileCompletion.fromProfile(UserProfile.defaultProfile()),
     error: (_, __) =>
         ProfileCompletion.fromProfile(UserProfile.defaultProfile()),
   );
@@ -253,20 +280,23 @@ class SOSLogNotifier extends AsyncNotifier<List<SOSLogEntry>> {
   Future<List<SOSLogEntry>> build() async {
     final prefs = await SharedPreferences.getInstance();
     final logJson = prefs.getStringList('sos_log') ?? [];
-    
+
     return logJson
-        .map((entry) => SOSLogEntry.fromMap(
-            _parseJsonString(entry) as Map<String, dynamic>))
+        .map(
+          (entry) => SOSLogEntry.fromMap(
+            _parseJsonString(entry) as Map<String, dynamic>,
+          ),
+        )
         .toList();
   }
 
   Future<void> addLogEntry(SOSLogEntry entry) async {
     final prefs = await SharedPreferences.getInstance();
     final logJson = prefs.getStringList('sos_log') ?? [];
-    
+
     logJson.add(_jsonEncode(entry.toMap()));
     await prefs.setStringList('sos_log', logJson);
-    
+
     // Update state
     final currentList = await build();
     state = AsyncValue.data(currentList);
@@ -284,7 +314,11 @@ class SOSLogNotifier extends AsyncNotifier<List<SOSLogEntry>> {
       // Manual JSON parsing for safety
       return _decodeJson(jsonStr);
     } catch (e) {
-      return {'timestamp': DateTime.now().toIso8601String(), 'message': 'SOS Alert', 'status': 'prepared'};
+      return {
+        'timestamp': DateTime.now().toIso8601String(),
+        'message': 'SOS Alert',
+        'status': 'prepared',
+      };
     }
   }
 
@@ -295,7 +329,7 @@ class SOSLogNotifier extends AsyncNotifier<List<SOSLogEntry>> {
       final content = json.substring(1, json.length - 1);
       final pairs = content.split('","');
       final map = <String, dynamic>{};
-      
+
       for (var pair in pairs) {
         final parts = pair.split('":');
         if (parts.length == 2) {
@@ -311,9 +345,7 @@ class SOSLogNotifier extends AsyncNotifier<List<SOSLogEntry>> {
 
   // Simple JSON encoder
   String _jsonEncode(Map<String, dynamic> map) {
-    final entries = map.entries
-        .map((e) => '"${e.key}":"${e.value}"')
-        .join(',');
+    final entries = map.entries.map((e) => '"${e.key}":"${e.value}"').join(',');
     return '{$entries}';
   }
 }

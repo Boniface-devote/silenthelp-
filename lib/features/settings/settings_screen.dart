@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -13,10 +15,7 @@ import '../../shared/widgets/language_bar.dart';
 import 'settings_provider.dart';
 
 class ContactSelectionData {
-  const ContactSelectionData({
-    required this.name,
-    required this.phoneNumber,
-  });
+  const ContactSelectionData({required this.name, required this.phoneNumber});
 
   final String name;
   final String phoneNumber;
@@ -28,10 +27,7 @@ ContactSelectionData buildContactSelectionData(Contact contact) {
       ? contact.phoneNumbers!.first.trim()
       : '';
 
-  return ContactSelectionData(
-    name: contactName,
-    phoneNumber: phoneNumber,
-  );
+  return ContactSelectionData(name: contactName, phoneNumber: phoneNumber);
 }
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -46,6 +42,10 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  final _formKey = GlobalKey<FormState>();
+  bool _profileLoaded = false;
+  bool _profileLoadFailed = false;
+  bool _isSaving = false;
   late TextEditingController _nameController;
   late TextEditingController _conditionController;
   late TextEditingController _phoneController;
@@ -72,34 +72,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _emPhoneController = TextEditingController();
     _secondContactNameController = TextEditingController();
     _secondContactPhoneController = TextEditingController();
-    _secondContactLabelController = TextEditingController(text: 'Family / Teacher');
+    _secondContactLabelController = TextEditingController(
+      text: 'Family / Teacher',
+    );
     _medicalContactNameController = TextEditingController();
     _medicalContactPhoneController = TextEditingController();
-    _medicalContactLabelController = TextEditingController(text: 'Doctor / Nurse / Hospital');
-    
-    // Set initial values from provider
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final profileAsync = ref.read(settingsProvider);
-      profileAsync.whenData((profile) {
-        _nameController.text = profile.name;
-        _conditionController.text = profile.condition;
-        _phoneController.text = profile.phone;
-        _bloodController.text = profile.bloodType;
-        _noteController.text = profile.medicalNote;
-        _emNameController.text = profile.emContactName;
-        _emPhoneController.text = profile.emContactNumber;
-        _secondContactNameController.text = profile.secondContactName;
-        _secondContactPhoneController.text = profile.secondContactNumber;
-        _secondContactLabelController.text = profile.secondContactLabel.isNotEmpty
-            ? profile.secondContactLabel
-            : 'Family / Teacher';
-        _medicalContactNameController.text = profile.medicalContactName;
-        _medicalContactPhoneController.text = profile.medicalContactNumber;
-        _medicalContactLabelController.text = profile.medicalContactLabel.isNotEmpty
-            ? profile.medicalContactLabel
-            : 'Doctor / Nurse / Hospital';
-      });
-    });
+    _medicalContactLabelController = TextEditingController(
+      text: 'Doctor / Nurse / Hospital',
+    );
+
+    unawaited(_loadProfile());
   }
 
   @override
@@ -139,205 +121,253 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Language Bar
-            LanguageBar(),
-            
-            SizedBox(height: 32.h),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Language Bar
+              LanguageBar(),
 
-            // Profile Completion Section
-            _buildProfileCompletionWidget(ref),
+              if (!_profileLoaded && !_profileLoadFailed)
+                Padding(
+                  padding: EdgeInsets.only(top: 12.h),
+                  child: const LinearProgressIndicator(),
+                ),
 
-            SizedBox(height: 32.h),
+              if (_profileLoadFailed)
+                Padding(
+                  padding: EdgeInsets.only(top: 12.h),
+                  child: Text(
+                    'Could not load your saved settings. Please restart and try again.',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.red,
+                    ),
+                  ),
+                ),
 
-            // Personal Details Section
-            Text(
-              context.tr('lbl_personal'),
-              style: AppTextStyles.labelLarge.copyWith(
-                color: AppColors.textMuted,
+              SizedBox(height: 32.h),
+
+              // Profile Completion Section
+              _buildProfileCompletionWidget(ref),
+
+              SizedBox(height: 32.h),
+
+              // Personal Details Section
+              Text(
+                context.tr('lbl_personal'),
+                style: AppTextStyles.labelLarge.copyWith(
+                  color: AppColors.textMuted,
+                ),
               ),
-            ),
-            SizedBox(height: 16.h),
+              SizedBox(height: 16.h),
 
-            _buildTextField(
-              controller: _nameController,
-              label: context.tr('lbl_name'),
-            ),
-            SizedBox(height: 12.h),
-
-            _buildTextField(
-              controller: _conditionController,
-              label: context.tr('lbl_cond'),
-            ),
-            SizedBox(height: 12.h),
-
-            _buildTextField(
-              controller: _phoneController,
-              label: context.tr('lbl_phone'),
-            ),
-            SizedBox(height: 12.h),
-
-            _buildTextField(
-              controller: _bloodController,
-              label: context.tr('lbl_blood'),
-            ),
-            SizedBox(height: 12.h),
-
-            _buildTextField(
-              controller: _noteController,
-              label: context.tr('lbl_note'),
-              maxLines: 3,
-            ),
-
-            SizedBox(height: 32.h),
-
-            // Emergency Contact Section
-            Text(
-              context.tr('lbl_contacts'),
-              style: AppTextStyles.labelLarge.copyWith(
-                color: AppColors.textMuted,
+              _buildTextField(
+                controller: _nameController,
+                label: context.tr('lbl_name'),
               ),
-            ),
-            SizedBox(height: 16.h),
+              SizedBox(height: 12.h),
 
-            _buildTextField(
-              controller: _emNameController,
-              label: context.tr('lbl_em_name'),
-            ),
-            SizedBox(height: 8.h),
-            Semantics(
-              button: true,
-              label: context.tr('pick_from_contacts'),
-              child: SizedBox(
+              _buildTextField(
+                controller: _conditionController,
+                label: context.tr('lbl_cond'),
+              ),
+              SizedBox(height: 12.h),
+
+              _buildTextField(
+                controller: _phoneController,
+                label: context.tr('lbl_phone'),
+                keyboardType: TextInputType.phone,
+                validator: _validateOptionalPhone,
+              ),
+              SizedBox(height: 12.h),
+
+              _buildTextField(
+                controller: _bloodController,
+                label: context.tr('lbl_blood'),
+                validator: _validateBloodType,
+              ),
+              SizedBox(height: 12.h),
+
+              _buildTextField(
+                controller: _noteController,
+                label: context.tr('lbl_note'),
+                maxLines: 3,
+              ),
+
+              SizedBox(height: 32.h),
+
+              // Emergency Contact Section
+              Text(
+                context.tr('lbl_contacts'),
+                style: AppTextStyles.labelLarge.copyWith(
+                  color: AppColors.textMuted,
+                ),
+              ),
+              SizedBox(height: 16.h),
+
+              _buildTextField(
+                controller: _emNameController,
+                label: context.tr('lbl_em_name'),
+                validator: (value) =>
+                    _validatePairedContactName(value, _emPhoneController),
+              ),
+              SizedBox(height: 8.h),
+              Semantics(
+                button: true,
+                label: context.tr('pick_from_contacts'),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: !_profileLoaded || _isSaving
+                        ? null
+                        : () => _pickContactAndFill(
+                            nameController: _emNameController,
+                            phoneController: _emPhoneController,
+                          ),
+                    icon: const Icon(Icons.contacts_outlined),
+                    label: Text(context.tr('pick_from_contacts')),
+                    style: OutlinedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 12.h),
+                      side: const BorderSide(color: AppColors.teal),
+                      foregroundColor: AppColors.teal,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 12.h),
+
+              _buildTextField(
+                controller: _emPhoneController,
+                label: context.tr('lbl_em_num'),
+                keyboardType: TextInputType.phone,
+                validator: (value) =>
+                    _validateContactPhone(value, _emNameController),
+              ),
+
+              SizedBox(height: 20.h),
+              _buildTextField(
+                controller: _secondContactLabelController,
+                label: 'Contact Role 2',
+              ),
+              SizedBox(height: 12.h),
+              _buildTextField(
+                controller: _secondContactNameController,
+                label: 'Family / Teacher Contact Name',
+                validator: (value) => _validatePairedContactName(
+                  value,
+                  _secondContactPhoneController,
+                ),
+              ),
+              SizedBox(height: 12.h),
+              _buildTextField(
+                controller: _secondContactPhoneController,
+                label: 'Family / Teacher Contact Number',
+                keyboardType: TextInputType.phone,
+                validator: (value) =>
+                    _validateContactPhone(value, _secondContactNameController),
+              ),
+              SizedBox(height: 8.h),
+              Semantics(
+                button: true,
+                label: context.tr('pick_from_contacts'),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: !_profileLoaded || _isSaving
+                        ? null
+                        : () => _pickContactAndFill(
+                            nameController: _secondContactNameController,
+                            phoneController: _secondContactPhoneController,
+                          ),
+                    icon: const Icon(Icons.contacts_outlined),
+                    label: Text(context.tr('pick_from_contacts')),
+                    style: OutlinedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 12.h),
+                      side: const BorderSide(color: AppColors.teal),
+                      foregroundColor: AppColors.teal,
+                    ),
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 20.h),
+              _buildTextField(
+                controller: _medicalContactLabelController,
+                label: 'Medical Contact Role',
+              ),
+              SizedBox(height: 12.h),
+              _buildTextField(
+                controller: _medicalContactNameController,
+                label: 'Doctor / Nurse / Hospital Name',
+                validator: (value) => _validatePairedContactName(
+                  value,
+                  _medicalContactPhoneController,
+                ),
+              ),
+              SizedBox(height: 12.h),
+              _buildTextField(
+                controller: _medicalContactPhoneController,
+                label: 'Doctor / Nurse / Hospital Number',
+                keyboardType: TextInputType.phone,
+                validator: (value) =>
+                    _validateContactPhone(value, _medicalContactNameController),
+              ),
+              SizedBox(height: 8.h),
+              Semantics(
+                button: true,
+                label: context.tr('pick_from_contacts'),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: !_profileLoaded || _isSaving
+                        ? null
+                        : () => _pickContactAndFill(
+                            nameController: _medicalContactNameController,
+                            phoneController: _medicalContactPhoneController,
+                          ),
+                    icon: const Icon(Icons.contacts_outlined),
+                    label: Text(context.tr('pick_from_contacts')),
+                    style: OutlinedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 12.h),
+                      side: const BorderSide(color: AppColors.teal),
+                      foregroundColor: AppColors.teal,
+                    ),
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 32.h),
+
+              // SOS History Section
+              _buildSOSHistorySection(ref),
+
+              SizedBox(height: 32.h),
+
+              // Save Button
+              SizedBox(
                 width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _pickContactAndFill(
-                    nameController: _emNameController,
-                    phoneController: _emPhoneController,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.teal,
+                    padding: EdgeInsets.symmetric(vertical: 16.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
                   ),
-                  icon: const Icon(Icons.contacts_outlined),
-                  label: Text(context.tr('pick_from_contacts')),
-                  style: OutlinedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 12.h),
-                    side: const BorderSide(color: AppColors.teal),
-                    foregroundColor: AppColors.teal,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 12.h),
-
-            _buildTextField(
-              controller: _emPhoneController,
-              label: context.tr('lbl_em_num'),
-            ),
-
-            SizedBox(height: 20.h),
-            _buildTextField(
-              controller: _secondContactLabelController,
-              label: 'Contact Role 2',
-            ),
-            SizedBox(height: 12.h),
-            _buildTextField(
-              controller: _secondContactNameController,
-              label: 'Family / Teacher Contact Name',
-            ),
-            SizedBox(height: 12.h),
-            _buildTextField(
-              controller: _secondContactPhoneController,
-              label: 'Family / Teacher Contact Number',
-            ),
-            SizedBox(height: 8.h),
-            Semantics(
-              button: true,
-              label: context.tr('pick_from_contacts'),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _pickContactAndFill(
-                    nameController: _secondContactNameController,
-                    phoneController: _secondContactPhoneController,
-                  ),
-                  icon: const Icon(Icons.contacts_outlined),
-                  label: Text(context.tr('pick_from_contacts')),
-                  style: OutlinedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 12.h),
-                    side: const BorderSide(color: AppColors.teal),
-                    foregroundColor: AppColors.teal,
+                  onPressed: !_profileLoaded || _isSaving ? null : _saveProfile,
+                  child: Text(
+                    _isSaving ? 'Saving…' : context.tr('save_btn'),
+                    style: AppTextStyles.buttonLarge.copyWith(
+                      color: AppColors.background,
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            SizedBox(height: 20.h),
-            _buildTextField(
-              controller: _medicalContactLabelController,
-              label: 'Medical Contact Role',
-            ),
-            SizedBox(height: 12.h),
-            _buildTextField(
-              controller: _medicalContactNameController,
-              label: 'Doctor / Nurse / Hospital Name',
-            ),
-            SizedBox(height: 12.h),
-            _buildTextField(
-              controller: _medicalContactPhoneController,
-              label: 'Doctor / Nurse / Hospital Number',
-            ),
-            SizedBox(height: 8.h),
-            Semantics(
-              button: true,
-              label: context.tr('pick_from_contacts'),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _pickContactAndFill(
-                    nameController: _medicalContactNameController,
-                    phoneController: _medicalContactPhoneController,
-                  ),
-                  icon: const Icon(Icons.contacts_outlined),
-                  label: Text(context.tr('pick_from_contacts')),
-                  style: OutlinedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 12.h),
-                    side: const BorderSide(color: AppColors.teal),
-                    foregroundColor: AppColors.teal,
-                  ),
-                ),
-              ),
-            ),
-
-            SizedBox(height: 32.h),
-
-            // SOS History Section
-            _buildSOSHistorySection(ref),
-
-            SizedBox(height: 32.h),
-
-            // Save Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.teal,
-                  padding: EdgeInsets.symmetric(vertical: 16.h),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                ),
-                onPressed: _saveProfile,
-                child: Text(
-                  context.tr('save_btn'),
-                  style: AppTextStyles.buttonLarge.copyWith(
-                    color: AppColors.background,
-                  ),
-                ),
-              ),
-            ),
-
-            SizedBox(height: 40.h),
-          ],
+              SizedBox(height: 40.h),
+            ],
+          ),
         ),
       ),
     );
@@ -347,20 +377,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     required TextEditingController controller,
     required String label,
     int maxLines = 1,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: AppTextStyles.labelSmall.copyWith(
-            color: AppColors.textMuted,
-          ),
+          style: AppTextStyles.labelSmall.copyWith(color: AppColors.textMuted),
         ),
         SizedBox(height: 8.h),
-        TextField(
+        TextFormField(
           controller: controller,
           maxLines: maxLines,
+          keyboardType: keyboardType,
+          validator: validator,
+          enabled: _profileLoaded && !_isSaving,
           style: AppTextStyles.bodyMedium,
           decoration: InputDecoration(
             filled: true,
@@ -375,16 +408,88 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12.r),
-              borderSide: const BorderSide(
-                color: AppColors.teal,
-                width: 2,
-              ),
+              borderSide: const BorderSide(color: AppColors.teal, width: 2),
             ),
             contentPadding: EdgeInsets.all(12.w),
           ),
         ),
       ],
     );
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final profile = await ref.read(settingsProvider.future);
+      if (!mounted) return;
+
+      _nameController.text = profile.name;
+      _conditionController.text = profile.condition;
+      _phoneController.text = profile.phone;
+      _bloodController.text = profile.bloodType;
+      _noteController.text = profile.medicalNote;
+      _emNameController.text = profile.emContactName;
+      _emPhoneController.text = profile.emContactNumber;
+      _secondContactNameController.text = profile.secondContactName;
+      _secondContactPhoneController.text = profile.secondContactNumber;
+      _secondContactLabelController.text = profile.secondContactLabel.isNotEmpty
+          ? profile.secondContactLabel
+          : 'Family / Teacher';
+      _medicalContactNameController.text = profile.medicalContactName;
+      _medicalContactPhoneController.text = profile.medicalContactNumber;
+      _medicalContactLabelController.text =
+          profile.medicalContactLabel.isNotEmpty
+          ? profile.medicalContactLabel
+          : 'Doctor / Nurse / Hospital';
+      setState(() => _profileLoaded = true);
+    } catch (_) {
+      if (mounted) setState(() => _profileLoadFailed = true);
+    }
+  }
+
+  String? _validateOptionalPhone(String? value) {
+    final phone = value?.trim() ?? '';
+    if (phone.isEmpty) return null;
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    if (!RegExp(r'^\+?[0-9 ()-]+$').hasMatch(phone) ||
+        digits.length < 7 ||
+        digits.length > 15) {
+      return 'Enter a valid phone number.';
+    }
+    return null;
+  }
+
+  String? _validateContactPhone(
+    String? value,
+    TextEditingController nameController,
+  ) {
+    final phone = value?.trim() ?? '';
+    if (phone.isEmpty && nameController.text.trim().isNotEmpty) {
+      return 'Enter a phone number for this contact.';
+    }
+    return _validateOptionalPhone(phone);
+  }
+
+  String? _validatePairedContactName(
+    String? value,
+    TextEditingController phoneController,
+  ) {
+    if ((value?.trim().isNotEmpty ?? false) &&
+        phoneController.text.trim().isEmpty) {
+      return 'Enter a phone number for this contact.';
+    }
+    return null;
+  }
+
+  String? _validateBloodType(String? value) {
+    final bloodType = value?.trim().toUpperCase() ?? '';
+    if (bloodType.isEmpty || bloodType == '??' || bloodType == 'UNKNOWN') {
+      return null;
+    }
+    const bloodTypes = {'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'};
+    if (!bloodTypes.contains(bloodType)) {
+      return 'Enter a valid blood type, such as O+ or A-.';
+    }
+    return null;
   }
 
   Future<void> _pickContactAndFill({
@@ -454,41 +559,47 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  void _saveProfile() async {
+  Future<void> _saveProfile() async {
+    if (_isSaving || !_profileLoaded) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
     final profile = UserProfile(
-      name: _nameController.text,
-      condition: _conditionController.text,
-      phone: _phoneController.text,
-      bloodType: _bloodController.text,
-      medicalNote: _noteController.text,
-      emContactName: _emNameController.text,
-      emContactNumber: _emPhoneController.text,
-      secondContactName: _secondContactNameController.text,
-      secondContactNumber: _secondContactPhoneController.text,
-      secondContactLabel: _secondContactLabelController.text,
-      medicalContactName: _medicalContactNameController.text,
-      medicalContactNumber: _medicalContactPhoneController.text,
-      medicalContactLabel: _medicalContactLabelController.text,
+      name: _nameController.text.trim(),
+      condition: _conditionController.text.trim(),
+      phone: _phoneController.text.trim(),
+      bloodType: _bloodController.text.trim().toUpperCase(),
+      medicalNote: _noteController.text.trim(),
+      emContactName: _emNameController.text.trim(),
+      emContactNumber: _emPhoneController.text.trim(),
+      secondContactName: _secondContactNameController.text.trim(),
+      secondContactNumber: _secondContactPhoneController.text.trim(),
+      secondContactLabel: _secondContactLabelController.text.trim(),
+      medicalContactName: _medicalContactNameController.text.trim(),
+      medicalContactNumber: _medicalContactPhoneController.text.trim(),
+      medicalContactLabel: _medicalContactLabelController.text.trim(),
     );
 
-    await ref
-        .read(settingsProvider.notifier)
-        .saveProfile(profile);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr('profile_saved')),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-
-      // Navigate back to home
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) {
-          context.go(AppConstants.routeHome);
-        }
-      });
+    setState(() => _isSaving = true);
+    try {
+      await ref.read(settingsProvider.notifier).saveProfile(profile);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr('profile_saved')),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not save settings. Please try again.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -649,23 +760,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               color: isComplete
                   ? AppColors.teal
                   : isRequired
-                      ? AppColors.red.withValues(alpha: 0.2)
-                      : AppColors.card,
+                  ? AppColors.red.withValues(alpha: 0.2)
+                  : AppColors.card,
               borderRadius: BorderRadius.circular(6.r),
               border: Border.all(
                 color: isComplete
                     ? AppColors.teal
                     : isRequired
-                        ? AppColors.red
-                        : AppColors.border,
+                    ? AppColors.red
+                    : AppColors.border,
               ),
             ),
             child: isComplete
-                ? Icon(
-                    Icons.check,
-                    size: 16.sp,
-                    color: AppColors.background,
-                  )
+                ? Icon(Icons.check, size: 16.sp, color: AppColors.background)
                 : null,
           ),
           SizedBox(width: 12.w),
@@ -676,8 +783,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 color: isComplete
                     ? AppColors.textSecondary
                     : isRequired
-                        ? AppColors.red
-                        : AppColors.textSecondary,
+                    ? AppColors.red
+                    : AppColors.textSecondary,
               ),
             ),
           ),
@@ -797,13 +904,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 border: Border.all(color: AppColors.border),
               ),
               child: Column(
-                children: List.generate(
-                  logs.length,
-                  (index) {
-                    final log = logs[logs.length - 1 - index]; // Reverse order (newest first)
-                    return _buildSOSLogItem(log, index == 0, index == logs.length - 1);
-                  },
-                ),
+                children: List.generate(logs.length, (index) {
+                  final log =
+                      logs[logs.length -
+                          1 -
+                          index]; // Reverse order (newest first)
+                  return _buildSOSLogItem(
+                    log,
+                    index == 0,
+                    index == logs.length - 1,
+                  );
+                }),
               ),
             );
           },
@@ -831,10 +942,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildSOSLogItem(SOSLogEntry log, bool isFirst, bool isLast) {
-    final isOpened = log.status == 'opened_in_sms' || log.status == 'sms_app_opened';
+    final isOpened =
+        log.status == 'opened_in_sms' || log.status == 'sms_app_opened';
     final isDelivered = log.status == 'delivered';
     final isFailed = log.status == 'failed' || log.status == 'delivery_failed';
-    final formattedDate = '${log.timestamp.month}/${log.timestamp.day}/${log.timestamp.year} ${log.timestamp.hour.toString().padLeft(2, '0')}:${log.timestamp.minute.toString().padLeft(2, '0')}';
+    final formattedDate =
+        '${log.timestamp.month}/${log.timestamp.day}/${log.timestamp.year} ${log.timestamp.hour.toString().padLeft(2, '0')}:${log.timestamp.minute.toString().padLeft(2, '0')}';
 
     return Column(
       children: [
@@ -847,7 +960,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 width: 36.w,
                 height: 36.w,
                 decoration: BoxDecoration(
-                  color: isOpened ? AppColors.teal.withValues(alpha: 0.2) : AppColors.yellow.withValues(alpha: 0.2),
+                  color: isOpened
+                      ? AppColors.teal.withValues(alpha: 0.2)
+                      : AppColors.yellow.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Icon(
@@ -883,18 +998,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       isDelivered
                           ? 'Delivered'
                           : isFailed
-                              ? 'Failed'
-                              : isOpened
-                                  ? context.tr('sos_log_opened')
-                                  : context.tr('sos_log_prepared'),
+                          ? 'Failed'
+                          : isOpened
+                          ? context.tr('sos_log_opened')
+                          : context.tr('sos_log_prepared'),
                       style: AppTextStyles.caption.copyWith(
                         color: isDelivered
                             ? AppColors.teal
                             : isFailed
-                                ? AppColors.red
-                                : isOpened
-                                    ? AppColors.teal
-                                    : AppColors.yellow,
+                            ? AppColors.red
+                            : isOpened
+                            ? AppColors.teal
+                            : AppColors.yellow,
                       ),
                     ),
                   ],
