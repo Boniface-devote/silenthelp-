@@ -1,31 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/theme/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import 'responsive_shell.dart';
 
 class BottomNavScaffold extends StatefulWidget {
   final Widget child;
 
-  const BottomNavScaffold({
-    Key? key,
-    required this.child,
-  }) : super(key: key);
+  const BottomNavScaffold({Key? key, required this.child}) : super(key: key);
 
   @override
   State<BottomNavScaffold> createState() => _BottomNavScaffoldState();
 }
 
 class _BottomNavScaffoldState extends State<BottomNavScaffold> {
-  int _selectedIndex = 0;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ResponsiveShell(
-        child: widget.child,
-      ),
+      body: ResponsiveShell(child: widget.child),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _getSelectedIndex(context),
         onDestinationSelected: (index) {
@@ -37,27 +30,27 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold> {
           NavigationDestination(
             icon: Icon(Icons.home_outlined, size: 24.sp),
             selectedIcon: Icon(Icons.home, size: 24.sp),
-            label: 'Home',
+            label: 'nav_home'.tr(),
           ),
           NavigationDestination(
             icon: Icon(Icons.warning_outlined, size: 24.sp),
             selectedIcon: Icon(Icons.warning, size: 24.sp),
-            label: 'Emergency',
+            label: 'nav_emergency'.tr(),
           ),
           NavigationDestination(
             icon: Icon(Icons.mic_none, size: 24.sp),
             selectedIcon: Icon(Icons.mic, size: 24.sp),
-            label: 'Talk',
+            label: 'nav_talk'.tr(),
           ),
           NavigationDestination(
             icon: Icon(Icons.map_outlined, size: 24.sp),
             selectedIcon: Icon(Icons.map, size: 24.sp),
-            label: 'Places',
+            label: 'nav_places'.tr(),
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined, size: 24.sp),
             selectedIcon: Icon(Icons.settings, size: 24.sp),
-            label: 'Settings',
+            label: 'nav_settings'.tr(),
           ),
         ],
       ),
@@ -66,14 +59,17 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold> {
 
   int _getSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
-    
+
     if (location == AppConstants.routeHome) return 0;
     if (location == AppConstants.routeEmergency ||
-        location == AppConstants.routeTrustedCircle) return 1;
+        location == AppConstants.routeTrustedCircle)
+      return 1;
     if (location == AppConstants.routeTalk) return 2;
     if (location == AppConstants.routeNearbyPlaces) return 3;
-    if (location == AppConstants.routeSettings) return 4;
-    
+    if (location == AppConstants.routeSettings ||
+        location == AppConstants.routeProfile)
+      return 4;
+
     return 0;
   }
 

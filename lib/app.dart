@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
+import 'core/providers/app_preferences_provider.dart';
 import 'core/providers/locale_provider.dart';
 
 class SilentHelpApp extends ConsumerWidget {
@@ -14,10 +15,12 @@ class SilentHelpApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Watch the locale provider to trigger rebuilds when locale changes
     final selectedLocale = ref.watch(localeProvider);
-    
+    final appPreferences = ref.watch(appPreferencesProvider);
+    final fontScale = appPreferences.valueOrNull?.fontScale ?? 1.0;
+
     // Get the current locale from EasyLocalization context
     final currentLocale = context.locale;
-    
+
     // Update the provider if EasyLocalization locale has changed.
     // (e.g., if locale was changed from persistent storage on app restart)
     if (selectedLocale != currentLocale) {
@@ -32,15 +35,27 @@ class SilentHelpApp extends ConsumerWidget {
       splitScreenMode: true,
       builder: (context, child) {
         // Material/Cupertino locales that Flutter natively supports
-        const supportedMaterialLocales = ['en', 'es', 'fr', 'de', 'it', 'ja', 'zh', 'sw'];
-        
+        const supportedMaterialLocales = [
+          'en',
+          'es',
+          'fr',
+          'de',
+          'it',
+          'ja',
+          'zh',
+          'sw',
+        ];
+
         // If current locale is not supported by Material, fallback to English for Material
-        final materialLocale = supportedMaterialLocales.contains(selectedLocale.languageCode)
+        final materialLocale =
+            supportedMaterialLocales.contains(selectedLocale.languageCode)
             ? selectedLocale
             : const Locale('en');
 
         return MaterialApp.router(
-          key: ValueKey(selectedLocale.toString()), // Force rebuild when locale changes
+          key: ValueKey(
+            selectedLocale.toString(),
+          ), // Force rebuild when locale changes
           title: 'SilentHelp',
           theme: AppTheme.darkTheme,
           localizationsDelegates: [
@@ -49,13 +64,19 @@ class SilentHelpApp extends ConsumerWidget {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          supportedLocales: const [
-            Locale('en'),
-            Locale('sw'),
-            Locale('lg'),
-          ],
+          supportedLocales: const [Locale('en'), Locale('sw'), Locale('lg')],
           locale: materialLocale, // Use fallback locale for Material
           routerConfig: appRouter,
+          builder: (context, child) {
+            final mediaQuery = MediaQuery.of(context);
+            final systemFontScale = mediaQuery.textScaler.scale(1);
+            return MediaQuery(
+              data: mediaQuery.copyWith(
+                textScaler: TextScaler.linear(systemFontScale * fontScale),
+              ),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
           debugShowCheckedModeBanner: false,
         );
       },

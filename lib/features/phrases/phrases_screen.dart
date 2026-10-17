@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/services/haptics_service.dart';
 import '../../shared/providers/locale_provider.dart';
 import '../../shared/services/text_to_speech_service.dart';
 import 'phrases_data.dart';
@@ -19,16 +19,48 @@ class _Category {
 }
 
 const _categories = [
-  _Category(key: 'emergency',  icon: Icons.emergency_rounded,       color: AppColors.red),
-  _Category(key: 'daily',      icon: Icons.wb_sunny_rounded,         color: AppColors.teal),
-  _Category(key: 'medical',    icon: Icons.local_hospital_rounded,   color: AppColors.blue),
-  _Category(key: 'shopping',   icon: Icons.shopping_bag_rounded,     color: AppColors.yellow),
-  _Category(key: 'office',     icon: Icons.work_rounded,             color: AppColors.purple),
-  _Category(key: 'transport',  icon: Icons.directions_bus_rounded,   color: Color(0xFF4CAF50)),
-  _Category(key: 'restaurant', icon: Icons.restaurant_rounded,       color: Color(0xFFFF8C42)),
-  _Category(key: 'bank',       icon: Icons.account_balance_rounded,  color: Color(0xFF9C6AFF)),
-  _Category(key: 'school',     icon: Icons.school_rounded,           color: Color(0xFF29B6F6)),
-  _Category(key: 'police',     icon: Icons.local_police_rounded,     color: Color(0xFF78909C)),
+  _Category(
+    key: 'emergency',
+    icon: Icons.emergency_rounded,
+    color: AppColors.red,
+  ),
+  _Category(key: 'daily', icon: Icons.wb_sunny_rounded, color: AppColors.teal),
+  _Category(
+    key: 'medical',
+    icon: Icons.local_hospital_rounded,
+    color: AppColors.blue,
+  ),
+  _Category(
+    key: 'shopping',
+    icon: Icons.shopping_bag_rounded,
+    color: AppColors.yellow,
+  ),
+  _Category(key: 'office', icon: Icons.work_rounded, color: AppColors.purple),
+  _Category(
+    key: 'transport',
+    icon: Icons.directions_bus_rounded,
+    color: Color(0xFF4CAF50),
+  ),
+  _Category(
+    key: 'restaurant',
+    icon: Icons.restaurant_rounded,
+    color: Color(0xFFFF8C42),
+  ),
+  _Category(
+    key: 'bank',
+    icon: Icons.account_balance_rounded,
+    color: Color(0xFF9C6AFF),
+  ),
+  _Category(
+    key: 'school',
+    icon: Icons.school_rounded,
+    color: Color(0xFF29B6F6),
+  ),
+  _Category(
+    key: 'police',
+    icon: Icons.local_police_rounded,
+    color: Color(0xFF78909C),
+  ),
 ];
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -65,8 +97,7 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
   _Category get _activeCat =>
       _categories.firstWhere((c) => c.key == _selectedKey);
 
-  List<String> get _activePhrases =>
-      PhrasesData.phrases[_selectedKey] ?? [];
+  List<String> get _activePhrases => PhrasesData.phrases[_selectedKey] ?? [];
 
   void _selectCategory(String key) {
     if (key == _selectedKey) return;
@@ -75,11 +106,10 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
 
   void _speakPhrase(String text) {
     _tts.speak(text);
-    HapticFeedback.selectionClick();
+    HapticsService.selectionClick();
   }
 
-  void _showFullscreen(
-      BuildContext context, String phrase, Color accentColor) {
+  void _showFullscreen(BuildContext context, String phrase, Color accentColor) {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -101,8 +131,9 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
                   children: [
                     Text(
                       'Show this to them',
-                      style: AppTextStyles.labelSmall
-                          .copyWith(color: AppColors.textMuted),
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: AppColors.textMuted,
+                      ),
                     ),
                     GestureDetector(
                       onTap: () => Navigator.of(ctx).pop(),
@@ -114,8 +145,11 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
                           borderRadius: BorderRadius.circular(18.r),
                           border: Border.all(color: AppColors.border),
                         ),
-                        child: Icon(Icons.close,
-                            color: AppColors.textPrimary, size: 18.sp),
+                        child: Icon(
+                          Icons.close,
+                          color: AppColors.textPrimary,
+                          size: 18.sp,
+                        ),
                       ),
                     ),
                   ],
@@ -150,12 +184,16 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
                         borderRadius: BorderRadius.circular(14.r),
                       ),
                     ),
-                    icon: Icon(Icons.volume_up_rounded,
-                        color: AppColors.background, size: 20.sp),
+                    icon: Icon(
+                      Icons.volume_up_rounded,
+                      color: AppColors.background,
+                      size: 20.sp,
+                    ),
                     label: Text(
                       'Speak aloud',
-                      style: AppTextStyles.buttonMedium
-                          .copyWith(color: AppColors.background),
+                      style: AppTextStyles.buttonMedium.copyWith(
+                        color: AppColors.background,
+                      ),
                     ),
                     onPressed: () => _speakPhrase(phrase),
                   ),
@@ -183,25 +221,20 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
         elevation: 0,
         centerTitle: false,
         titleSpacing: 20.w,
-        title: Text(context.tr('phrases_title'),
-            style: AppTextStyles.heading2),
+        title: Text(context.tr('phrases_title'), style: AppTextStyles.heading2),
         actions: [
           GestureDetector(
-            onTap: () =>
-                setState(() => _showTranslations = !_showTranslations),
+            onTap: () => setState(() => _showTranslations = !_showTranslations),
             child: Container(
               margin: EdgeInsets.only(right: 16.w),
-              padding:
-                  EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
               decoration: BoxDecoration(
                 color: _showTranslations
                     ? AppColors.teal.withValues(alpha: 0.15)
                     : AppColors.card,
                 borderRadius: BorderRadius.circular(8.r),
                 border: Border.all(
-                  color: _showTranslations
-                      ? AppColors.teal
-                      : AppColors.border,
+                  color: _showTranslations ? AppColors.teal : AppColors.border,
                 ),
               ),
               child: Row(
@@ -240,14 +273,21 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
               itemBuilder: (context, index) {
                 if (index == 0) {
                   return _buildSectionHeader(
-                      context, activeCat, phrases.length);
+                    context,
+                    activeCat,
+                    phrases.length,
+                  );
                 }
                 final phraseIndex = index - 1;
                 final parts = phrases[phraseIndex].split('|');
-                final langIdx =
-                    language == 'en' ? 0 : language == 'sw' ? 1 : 2;
-                final primary =
-                    langIdx < parts.length ? parts[langIdx] : parts[0];
+                final langIdx = language == 'en'
+                    ? 0
+                    : language == 'sw'
+                    ? 1
+                    : 2;
+                final primary = langIdx < parts.length
+                    ? parts[langIdx]
+                    : parts[0];
                 final en = parts.isNotEmpty ? parts[0] : '';
                 final sw = parts.length > 1 ? parts[1] : '';
                 final lg = parts.length > 2 ? parts[2] : '';
@@ -279,20 +319,17 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding:
-            EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         child: Row(
           children: _categories.map((cat) {
             final isActive = cat.key == _selectedKey;
-            final count =
-                PhrasesData.phrases[cat.key]?.length ?? 0;
+            final count = PhrasesData.phrases[cat.key]?.length ?? 0;
             return GestureDetector(
               onTap: () => _selectCategory(cat.key),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 margin: EdgeInsets.only(right: 10.w),
-                padding: EdgeInsets.symmetric(
-                    horizontal: 14.w, vertical: 8.h),
+                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                 decoration: BoxDecoration(
                   color: isActive
                       ? cat.color
@@ -311,37 +348,32 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
                     Icon(
                       cat.icon,
                       size: 15.sp,
-                      color: isActive
-                          ? AppColors.background
-                          : cat.color,
+                      color: isActive ? AppColors.background : cat.color,
                     ),
                     SizedBox(width: 6.w),
                     Text(
                       context.tr('cat_${cat.key}'),
                       style: AppTextStyles.labelSmall.copyWith(
-                        color: isActive
-                            ? AppColors.background
-                            : cat.color,
+                        color: isActive ? AppColors.background : cat.color,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     SizedBox(width: 6.w),
                     Container(
                       padding: EdgeInsets.symmetric(
-                          horizontal: 6.w, vertical: 1.h),
+                        horizontal: 6.w,
+                        vertical: 1.h,
+                      ),
                       decoration: BoxDecoration(
                         color: isActive
-                            ? AppColors.background
-                                .withValues(alpha: 0.25)
+                            ? AppColors.background.withValues(alpha: 0.25)
                             : cat.color.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10.r),
                       ),
                       child: Text(
                         '$count',
                         style: AppTextStyles.caption.copyWith(
-                          color: isActive
-                              ? AppColors.background
-                              : cat.color,
+                          color: isActive ? AppColors.background : cat.color,
                           fontWeight: FontWeight.w800,
                           fontSize: 10.sp,
                         ),
@@ -359,8 +391,7 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
 
   // ── Section header ────────────────────────────────────────────────────────
 
-  Widget _buildSectionHeader(
-      BuildContext context, _Category cat, int count) {
+  Widget _buildSectionHeader(BuildContext context, _Category cat, int count) {
     return Padding(
       padding: EdgeInsets.only(bottom: 14.h),
       child: Row(
@@ -386,17 +417,12 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
                     color: AppColors.textSecondary,
                   ),
                 ),
-                Text(
-                  '$count phrases',
-                  style: AppTextStyles.caption,
-                ),
+                Text('$count phrases', style: AppTextStyles.caption),
               ],
             ),
           ),
           Text(
-            _showTranslations
-                ? 'All languages shown'
-                : 'Translations hidden',
+            _showTranslations ? 'All languages shown' : 'Translations hidden',
             style: AppTextStyles.caption.copyWith(fontSize: 10.sp),
           ),
         ],
@@ -419,11 +445,20 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
     // no width:infinity, no CrossAxisAlignment.stretch — all caused layout
     // re-entrancy crashes in ListView.builder).
     final List<String> otherLabels = [];
-    final List<String> otherTexts  = [];
+    final List<String> otherTexts = [];
     if (_showTranslations) {
-      if (language != 'en' && en.isNotEmpty) { otherLabels.add('EN'); otherTexts.add(en); }
-      if (language != 'sw' && sw.isNotEmpty) { otherLabels.add('SW'); otherTexts.add(sw); }
-      if (language != 'lg' && lg.isNotEmpty) { otherLabels.add('LG'); otherTexts.add(lg); }
+      if (language != 'en' && en.isNotEmpty) {
+        otherLabels.add('EN');
+        otherTexts.add(en);
+      }
+      if (language != 'sw' && sw.isNotEmpty) {
+        otherLabels.add('SW');
+        otherTexts.add(sw);
+      }
+      if (language != 'lg' && lg.isNotEmpty) {
+        otherLabels.add('LG');
+        otherTexts.add(lg);
+      }
     }
 
     return Container(
@@ -441,7 +476,6 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-
             // ── Primary phrase ────────────────────────────────────
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -495,14 +529,17 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
                     children: List<Widget>.generate(otherLabels.length, (i) {
                       return Padding(
                         padding: EdgeInsets.only(
-                            bottom: i < otherLabels.length - 1 ? 6.h : 0),
+                          bottom: i < otherLabels.length - 1 ? 6.h : 0,
+                        ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
                               margin: EdgeInsets.only(right: 8.w),
                               padding: EdgeInsets.symmetric(
-                                  horizontal: 5.w, vertical: 2.h),
+                                horizontal: 5.w,
+                                vertical: 2.h,
+                              ),
                               decoration: BoxDecoration(
                                 color: accentColor.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(4.r),
@@ -542,7 +579,9 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
                 onTap: () => _speakPhrase(primary),
                 child: Container(
                   padding: EdgeInsets.symmetric(
-                      horizontal: 14.w, vertical: 7.h),
+                    horizontal: 14.w,
+                    vertical: 7.h,
+                  ),
                   decoration: BoxDecoration(
                     color: accentColor,
                     borderRadius: BorderRadius.circular(8.r),
@@ -550,8 +589,11 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.volume_up_rounded,
-                          size: 13.sp, color: AppColors.background),
+                      Icon(
+                        Icons.volume_up_rounded,
+                        size: 13.sp,
+                        color: AppColors.background,
+                      ),
                       SizedBox(width: 5.w),
                       Text(
                         'Speak',

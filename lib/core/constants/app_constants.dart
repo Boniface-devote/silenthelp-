@@ -16,8 +16,12 @@ class AppConstants {
   static const String routeIdCard = '/id-card';
   static const String routeLearn = '/learn';
   static const String routeSettings = '/settings';
+  static const String routeProfile = '/profile';
   static const String routeTrustedCircle = '/trusted-circle';
   static const String routeNearbyPlaces = '/nearby-places';
+  static const String routeDigitalSafety = '/digital-safety';
+  static const String routeAbuseReport = '/abuse-report';
+  static const String routeSafetyPlan = '/safety-plan';
 
   // Emergency numbers
   static const String policeNumber = '+256 999';

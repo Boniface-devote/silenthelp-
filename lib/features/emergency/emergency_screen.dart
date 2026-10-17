@@ -4,13 +4,13 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import '../../shared/widgets/contact_row.dart';
 import '../../core/services/location_service.dart';
+import '../../core/services/haptics_service.dart';
 import '../../core/services/sms_service.dart';
 import 'emergency_provider.dart';
 import '../settings/settings_provider.dart';
@@ -25,7 +25,7 @@ class EmergencyScreen extends ConsumerStatefulWidget {
 class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     with TickerProviderStateMixin {
   late AnimationController _pulseController;
-  DateTime? _sentAt;   // set when SOS is dispatched
+  DateTime? _sentAt; // set when SOS is dispatched
 
   @override
   void initState() {
@@ -74,7 +74,9 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: isSending ? null : () => _sendSafeStatus(profileAsync),
+                  onPressed: isSending
+                      ? null
+                      : () => _sendSafeStatus(profileAsync),
                   icon: const Icon(Icons.check_circle_outline),
                   label: Text(isSending ? 'Sending...' : 'I am safe'),
                   style: OutlinedButton.styleFrom(
@@ -87,7 +89,9 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
               SizedBox(width: 10.w),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: isSending ? null : () => _requestHelp(profileAsync),
+                  onPressed: isSending
+                      ? null
+                      : () => _requestHelp(profileAsync),
                   icon: const Icon(Icons.support_agent),
                   label: Text(isSending ? 'Sending...' : 'I need help'),
                   style: ElevatedButton.styleFrom(
@@ -113,11 +117,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
       title: 'Send safe check-in to',
     );
     if (contacts == null) return;
-    await _sendCheckIn(
-      contacts: contacts,
-      status: 'SAFE',
-      category: 'None',
-    );
+    await _sendCheckIn(contacts: contacts, status: 'SAFE', category: 'None');
   }
 
   Future<void> _requestHelp(AsyncValue<UserProfile> profileAsync) async {
@@ -149,7 +149,8 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                     title: Text(option),
                     value: option,
                     groupValue: category,
-                    onChanged: (value) => setDialogState(() => category = value!),
+                    onChanged: (value) =>
+                        setDialogState(() => category = value!),
                   ),
                 const SizedBox(height: 8),
                 const Text('How urgent is it?'),
@@ -219,13 +220,13 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
   }
 
   Future<List<({String name, String role, String number})>?>
-      _chooseCheckInRecipients({
+  _chooseCheckInRecipients({
     required List<({String name, String role, String number})> allContacts,
     required List<({String name, String role, String number})> defaults,
     required String title,
   }) async {
     if (allContacts.isEmpty) {
-      _showCheckInMessage('Add a trusted contact in Settings first.');
+      _showCheckInMessage('Add a trusted contact in Profile first.');
       return null;
     }
 
@@ -242,7 +243,9 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                 CheckboxListTile(
                   contentPadding: EdgeInsets.zero,
                   value: selectedNumbers.contains(contact.number),
-                  title: Text(contact.name.isEmpty ? contact.role : contact.name),
+                  title: Text(
+                    contact.name.isEmpty ? contact.role : contact.name,
+                  ),
                   subtitle: Text('${contact.role} · ${contact.number}'),
                   onChanged: (selected) => setDialogState(() {
                     if (selected == true) {
@@ -263,12 +266,14 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
               onPressed: selectedNumbers.isEmpty
                   ? null
                   : () => Navigator.pop(
-                        dialogContext,
-                        allContacts
-                            .where((contact) =>
-                                selectedNumbers.contains(contact.number))
-                            .toList(),
-                      ),
+                      dialogContext,
+                      allContacts
+                          .where(
+                            (contact) =>
+                                selectedNumbers.contains(contact.number),
+                          )
+                          .toList(),
+                    ),
               child: Text('Continue (${selectedNumbers.length})'),
             ),
           ],
@@ -313,7 +318,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     required String category,
   }) async {
     if (contacts.isEmpty) {
-      _showCheckInMessage('Add a trusted contact in Settings first.');
+      _showCheckInMessage('Add a trusted contact in Profile first.');
       return;
     }
 
@@ -335,7 +340,8 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     final locationUrl = location == null
         ? 'Unknown'
         : 'https://maps.google.com/?q=$coords';
-    final message = 'SilentHelp $status. Risk: $category. Time: $timestamp. '
+    final message =
+        'SilentHelp $status. Risk: $category. Time: $timestamp. '
         'Location: $locationUrl. I am Deaf; please text me.';
 
     var sentCount = 0;
@@ -353,8 +359,11 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
       final summary = sentCount > 0
           ? 'SMS sent to $sentCount of ${contacts.length} trusted contact(s).'
           : openedCount > 0
-              ? 'SMS app opened. Review and send each prepared message.'
-              : 'Could not send the SMS. Check your contacts and try again.';
+          ? 'SMS app opened. Review and send each prepared message.'
+          : 'Could not send the SMS. Check your contacts and try again.';
+      if (sentCount > 0 || openedCount > 0) {
+        await HapticsService.strongConfirmation();
+      }
       _showCheckInMessage(summary);
     } catch (error) {
       _showCheckInMessage('Could not send check-in: $error');
@@ -391,7 +400,6 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // Active Badge
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
@@ -476,24 +484,29 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                             if (emergencyState.isLocationLoading)
                               Container(
                                 padding: EdgeInsets.symmetric(
-                                    horizontal: 8.w, vertical: 2.h),
+                                  horizontal: 8.w,
+                                  vertical: 2.h,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: Color(0xFFFFA500).withValues(alpha: 0.2),
+                                  color: Color(
+                                    0xFFFFA500,
+                                  ).withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(4.r),
                                 ),
-                                child: Text(
-                                  '📡',
-                                  style: AppTextStyles.caption,
-                                ),
+                                child: Text('📡', style: AppTextStyles.caption),
                               )
                             else if (emergencyState.currentLocation != null)
                               Container(
                                 padding: EdgeInsets.symmetric(
-                                    horizontal: 8.w, vertical: 2.h),
+                                  horizontal: 8.w,
+                                  vertical: 2.h,
+                                ),
                                 decoration: BoxDecoration(
                                   color: emergencyState.isLocationAccurate
                                       ? Color(0xFF4CAF50).withValues(alpha: 0.2)
-                                      : Color(0xFFFFA500).withValues(alpha: 0.2),
+                                      : Color(
+                                          0xFFFFA500,
+                                        ).withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(4.r),
                                 ),
                                 child: Text(
@@ -596,7 +609,8 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                     number: profile.emContactNumber,
                     onCall: () => _makeCall(profile.emContactNumber),
                   ),
-                  if (profile.secondContactName.isNotEmpty || profile.secondContactNumber.isNotEmpty)
+                  if (profile.secondContactName.isNotEmpty ||
+                      profile.secondContactNumber.isNotEmpty)
                     ContactRow(
                       name: profile.secondContactLabel.isNotEmpty
                           ? '${profile.secondContactLabel}: ${profile.secondContactName}'
@@ -604,7 +618,8 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                       number: profile.secondContactNumber,
                       onCall: () => _makeCall(profile.secondContactNumber),
                     ),
-                  if (profile.medicalContactName.isNotEmpty || profile.medicalContactNumber.isNotEmpty)
+                  if (profile.medicalContactName.isNotEmpty ||
+                      profile.medicalContactNumber.isNotEmpty)
                     ContactRow(
                       name: profile.medicalContactLabel.isNotEmpty
                           ? '${profile.medicalContactLabel}: ${profile.medicalContactName}'
@@ -663,10 +678,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                     style: AppTextStyles.bodySmall,
                   ),
                   SizedBox(height: 8.h),
-                  Text(
-                    '-SilentHelp',
-                    style: AppTextStyles.caption,
-                  ),
+                  Text('-SilentHelp', style: AppTextStyles.caption),
                 ],
               ),
             ),
@@ -679,9 +691,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(8.r),
-                border: Border.all(
-                  color: AppColors.border,
-                ),
+                border: Border.all(color: AppColors.border),
               ),
               child: Text(
                 '🔒 Your location is only used during emergencies. We do not track you continuously.',
@@ -728,7 +738,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                 Text(
                   state.currentLocation != null
                       ? '📍 Location ready '
-                          '${state.isLocationAccurate ? '🟢 (Accurate)' : '🟡 (Approximate)'}'
+                            '${state.isLocationAccurate ? '🟢 (Accurate)' : '🟡 (Approximate)'}'
                       : '📡 Getting location...',
                   style: AppTextStyles.caption.copyWith(
                     color: AppColors.textMuted,
@@ -745,8 +755,8 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
   Widget _buildSentConfirmationCard() {
     final timeStr = _sentAt != null
         ? '${_sentAt!.hour.toString().padLeft(2, '0')}:'
-          '${_sentAt!.minute.toString().padLeft(2, '0')}:'
-          '${_sentAt!.second.toString().padLeft(2, '0')}'
+              '${_sentAt!.minute.toString().padLeft(2, '0')}:'
+              '${_sentAt!.second.toString().padLeft(2, '0')}'
         : '';
 
     return Container(
@@ -806,25 +816,26 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                   // Show message prompting to add emergency contact
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(
-                        context.tr('complete_required'),
-                      ),
+                      content: Text(context.tr('complete_required')),
                       duration: const Duration(seconds: 3),
                       backgroundColor: AppColors.red,
                       action: SnackBarAction(
-                        label: 'Go to Settings',
+                        label: 'Edit profile',
                         textColor: Colors.white,
                         onPressed: () {
-                          context.go(AppConstants.routeSettings);
+                          context.go(AppConstants.routeProfile);
                         },
                       ),
                     ),
                   );
-                  HapticFeedback.lightImpact();
+                  HapticsService.lightImpact();
                 },
           child: ScaleTransition(
             scale: Tween(begin: 1.0, end: isEnabled ? 1.03 : 1.0).animate(
-              CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+              CurvedAnimation(
+                parent: _pulseController,
+                curve: Curves.easeInOut,
+              ),
             ),
             child: Container(
               width: double.infinity,
@@ -920,7 +931,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
 
   Future<void> _sendSOS(BuildContext context, WidgetRef ref) async {
     // Initial vibration feedback when SOS button is pressed
-    HapticFeedback.heavyImpact();
+    await HapticsService.strongConfirmation();
 
     final profileAsync = ref.read(settingsProvider);
     final profile = await profileAsync.valueOrNull;
@@ -928,7 +939,9 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     if (profile == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile is still loading. Please try again.')),
+          const SnackBar(
+            content: Text('Profile is still loading. Please try again.'),
+          ),
         );
       }
       return;
@@ -944,19 +957,33 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
             children: [
               ListTile(
                 title: const Text('Primary emergency contact'),
-                subtitle: Text(profile.emContactName.isNotEmpty ? profile.emContactName : 'Primary contact'),
+                subtitle: Text(
+                  profile.emContactName.isNotEmpty
+                      ? profile.emContactName
+                      : 'Primary contact',
+                ),
                 onTap: () => Navigator.of(dialogContext).pop('primary'),
               ),
-              if (profile.secondContactName.isNotEmpty || profile.secondContactNumber.isNotEmpty)
+              if (profile.secondContactName.isNotEmpty ||
+                  profile.secondContactNumber.isNotEmpty)
                 ListTile(
                   title: const Text('Family / teacher'),
-                  subtitle: Text(profile.secondContactName.isNotEmpty ? profile.secondContactName : 'Family / teacher'),
+                  subtitle: Text(
+                    profile.secondContactName.isNotEmpty
+                        ? profile.secondContactName
+                        : 'Family / teacher',
+                  ),
                   onTap: () => Navigator.of(dialogContext).pop('family'),
                 ),
-              if (profile.medicalContactName.isNotEmpty || profile.medicalContactNumber.isNotEmpty)
+              if (profile.medicalContactName.isNotEmpty ||
+                  profile.medicalContactNumber.isNotEmpty)
                 ListTile(
                   title: const Text('Doctor / nurse / hospital'),
-                  subtitle: Text(profile.medicalContactName.isNotEmpty ? profile.medicalContactName : 'Medical contact'),
+                  subtitle: Text(
+                    profile.medicalContactName.isNotEmpty
+                        ? profile.medicalContactName
+                        : 'Medical contact',
+                  ),
                   onTap: () => Navigator.of(dialogContext).pop('medical'),
                 ),
               ListTile(
@@ -984,15 +1011,21 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
       switch (recipient) {
         case 'primary':
           emContactNumber = profile.emContactNumber;
-          recipientName = profile.emContactName.isNotEmpty ? profile.emContactName : 'Primary contact';
+          recipientName = profile.emContactName.isNotEmpty
+              ? profile.emContactName
+              : 'Primary contact';
           break;
         case 'family':
           emContactNumber = profile.secondContactNumber;
-          recipientName = profile.secondContactLabel.isNotEmpty ? profile.secondContactLabel : 'Family / teacher';
+          recipientName = profile.secondContactLabel.isNotEmpty
+              ? profile.secondContactLabel
+              : 'Family / teacher';
           break;
         case 'medical':
           emContactNumber = profile.medicalContactNumber;
-          recipientName = profile.medicalContactLabel.isNotEmpty ? profile.medicalContactLabel : 'Doctor / nurse / hospital';
+          recipientName = profile.medicalContactLabel.isNotEmpty
+              ? profile.medicalContactLabel
+              : 'Doctor / nurse / hospital';
           break;
         case 'police':
           emContactNumber = AppConstants.policeNumber;
@@ -1000,14 +1033,18 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
           break;
         default:
           emContactNumber = profile.emContactNumber;
-          recipientName = profile.emContactName.isNotEmpty ? profile.emContactName : 'Primary contact';
+          recipientName = profile.emContactName.isNotEmpty
+              ? profile.emContactName
+              : 'Primary contact';
       }
 
       if (emContactNumber.trim().isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Please add a phone number for $recipientName first.'),
+              content: Text(
+                'Please add a phone number for $recipientName first.',
+              ),
               backgroundColor: AppColors.red,
               duration: const Duration(seconds: 3),
             ),
@@ -1017,8 +1054,9 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
       }
 
       // Strategy: Send immediately with cached location, then improve in background
-      CachedLocation? currentLocation =
-          ref.read(emergencyProvider).currentLocation;
+      CachedLocation? currentLocation = ref
+          .read(emergencyProvider)
+          .currentLocation;
 
       // If no cached location, try to fetch it now
       if (currentLocation == null) {
@@ -1031,32 +1069,36 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
             highAccuracy: false,
           );
           if (currentLocation != null) {
-            emergencyNotifier.setPosition(Position(
-              latitude: currentLocation.latitude,
-              longitude: currentLocation.longitude,
-              timestamp: DateTime.now(),
-              accuracy: currentLocation.accuracy,
-              altitude: 0,
-              altitudeAccuracy: 0,
-              heading: 0,
-              headingAccuracy: 0,
-              speed: 0,
-              speedAccuracy: 0,
-            ));
+            emergencyNotifier.setPosition(
+              Position(
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+                timestamp: DateTime.now(),
+                accuracy: currentLocation.accuracy,
+                altitude: 0,
+                altitudeAccuracy: 0,
+                heading: 0,
+                headingAccuracy: 0,
+                speed: 0,
+                speedAccuracy: 0,
+              ),
+            );
           }
         }
       }
 
       // Prepare location text and coordinates
-      final address = currentLocation?.address?.isNotEmpty == true 
-          ? currentLocation!.address! 
+      final address = currentLocation?.address?.isNotEmpty == true
+          ? currentLocation!.address!
           : 'Unknown location';
       final coordinates = currentLocation != null
           ? '${currentLocation.latitude.toStringAsFixed(4)}, ${currentLocation.longitude.toStringAsFixed(4)}'
           : 'Unknown';
 
       // Log: SOS message prepared
-      await ref.read(sosLogProvider.notifier).addLogEntry(
+      await ref
+          .read(sosLogProvider.notifier)
+          .addLogEntry(
             SOSLogEntry(
               timestamp: DateTime.now(),
               message: 'To: $emContactNumber | Location: $address',
@@ -1073,7 +1115,9 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
       );
 
       // Log: actual SMS send/delivery outcome
-      await ref.read(sosLogProvider.notifier).addLogEntry(
+      await ref
+          .read(sosLogProvider.notifier)
+          .addLogEntry(
             SOSLogEntry(
               timestamp: DateTime.now(),
               message: 'To: $emContactNumber | Location: $address',
@@ -1081,16 +1125,15 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
             ),
           );
 
-      final bool wasSent = sendResult.sent || sendResult.status == 'sms_app_opened';
+      final bool wasSent =
+          sendResult.sent || sendResult.status == 'sms_app_opened';
       if (wasSent) {
         setState(() => _sentAt = DateTime.now());
         ref.read(emergencyProvider.notifier).setSosSent(true);
       }
 
       if (sendResult.deliveryConfirmed) {
-        await HapticFeedback.heavyImpact();
-        await Future.delayed(const Duration(milliseconds: 150));
-        await HapticFeedback.heavyImpact();
+        await HapticsService.strongConfirmation();
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1115,7 +1158,9 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('SMS app opened. Please send the SOS message.'),
+              content: const Text(
+                'SMS app opened. Please send the SOS message.',
+              ),
               backgroundColor: const Color(0xFFFFA000),
               duration: const Duration(seconds: 4),
             ),
@@ -1127,7 +1172,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
       // No further SMS is sent — exactly one SOS message per tap.
     } catch (e) {
       // Error vibration
-      HapticFeedback.selectionClick();
+      await HapticsService.selectionClick();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1154,8 +1199,9 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     // Non-GSM-7 chars (e.g. the em-dash) force UCS-2 encoding which cuts the
     // per-part limit to 70 chars and caused 4 charged messages per SOS tap.
     // Use only plain ASCII and truncate the address if it is unusually long.
-    final safeAddress =
-        address.length > 60 ? '${address.substring(0, 57)}...' : address;
+    final safeAddress = address.length > 60
+        ? '${address.substring(0, 57)}...'
+        : address;
 
     // Max length check (all ASCII/GSM-7, ~133 chars worst case):
     //   35  "SOS! I am Deaf (UgSL). Need help!\n"
@@ -1196,10 +1242,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
   }
 
   Future<void> _makeCall(String number) async {
-    final Uri launchUri = Uri(
-      scheme: 'tel',
-      path: number,
-    );
+    final Uri launchUri = Uri(scheme: 'tel', path: number);
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
     }

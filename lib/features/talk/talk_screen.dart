@@ -1,13 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/services/haptics_service.dart';
 import '../../shared/services/text_to_speech_service.dart';
 import 'talk_provider.dart';
 
@@ -48,14 +48,13 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _holdProgress = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 60),
-    )..addStatusListener((status) {
-        if (status == AnimationStatus.completed) {
-          _handleHoldTimeout();
-        }
-      });
+    _holdProgress =
+        AnimationController(vsync: this, duration: const Duration(seconds: 60))
+          ..addStatusListener((status) {
+            if (status == AnimationStatus.completed) {
+              _handleHoldTimeout();
+            }
+          });
     _initSpeech();
     _initTts();
   }
@@ -134,7 +133,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
       return;
     }
 
-    HapticFeedback.lightImpact();
+    HapticsService.lightImpact();
     notifier.setIsListening(true);
     _micPulse.repeat(reverse: true);
     _holdProgress.forward(from: 0);
@@ -148,10 +147,11 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
     final recognized = result.recognizedWords.toString().trim();
     if (recognized.isEmpty && _carriedTranscript.isEmpty) return;
 
-    final combined = (_carriedTranscript.isEmpty
-            ? recognized
-            : '$_carriedTranscript $recognized')
-        .trim();
+    final combined =
+        (_carriedTranscript.isEmpty
+                ? recognized
+                : '$_carriedTranscript $recognized')
+            .trim();
     notifier.setLiveTranscript(combined);
     _scrollToBottom();
 
@@ -228,7 +228,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
 
   void _handleHoldTimeout() {
     if (!_shouldKeepListening) return;
-    HapticFeedback.mediumImpact();
+    HapticsService.mediumImpact();
     _stopHoldListening(commit: true);
   }
 
@@ -238,7 +238,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
     final text = _inputController.text.trim();
     if (text.isEmpty) return;
 
-    HapticFeedback.lightImpact();
+    HapticsService.lightImpact();
     ref.read(talkProvider.notifier).addDeafMessage(text);
     _tts.speak(text);
     _inputController.clear();
@@ -325,9 +325,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
       body: Column(
         children: [
           // ── Chat area ──────────────────────────────────────────────────
-          Expanded(
-            child: _buildMessageList(context, state),
-          ),
+          Expanded(child: _buildMessageList(context, state)),
 
           // ── Input bar ─────────────────────────────────────────────────
           _buildInputBar(context, state),
@@ -404,17 +402,13 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
       itemCount: itemCount,
       itemBuilder: (context, index) {
         // Live transcript appears after all committed messages
-        if (index == state.messages.length &&
-            state.liveTranscript.isNotEmpty) {
+        if (index == state.messages.length && state.liveTranscript.isNotEmpty) {
           return _LiveTranscriptBubble(text: state.liveTranscript);
         }
 
         final msg = state.messages[index];
         return msg.sender == MessageSender.hearing
-            ? _HearingBubble(
-                message: msg,
-                onSpeak: () => _tts.speak(msg.text),
-              )
+            ? _HearingBubble(message: msg, onSpeak: () => _tts.speak(msg.text))
             : _DeafBubble(
                 message: msg,
                 onSpeak: () => _tts.speak(msg.text),
@@ -474,8 +468,9 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
               animation: Listenable.merge([_micPulse, _holdProgress]),
               builder: (_, __) {
                 final glow = state.isListening ? _micPulse.value : 0.0;
-                final progress =
-                    state.isListening ? (1.0 - _holdProgress.value) : 0.0;
+                final progress = state.isListening
+                    ? (1.0 - _holdProgress.value)
+                    : 0.0;
                 final secondsLeft = state.isListening
                     ? (60 * (1.0 - _holdProgress.value)).ceil().clamp(0, 60)
                     : 0;
@@ -495,7 +490,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
                       setState(() {
                         _isLocked = true;
                       });
-                      HapticFeedback.mediumImpact();
+                      HapticsService.mediumImpact();
                       return;
                     }
 
@@ -545,10 +540,12 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
                           child: CircularProgressIndicator(
                             value: progress.clamp(0.0, 1.0),
                             strokeWidth: 3,
-                            backgroundColor:
-                                AppColors.border.withValues(alpha: 0.45),
-                            valueColor:
-                                const AlwaysStoppedAnimation(AppColors.teal),
+                            backgroundColor: AppColors.border.withValues(
+                              alpha: 0.45,
+                            ),
+                            valueColor: const AlwaysStoppedAnimation(
+                              AppColors.teal,
+                            ),
                           ),
                         ),
                       Container(
@@ -556,8 +553,9 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
                         height: 58.w,
                         margin: EdgeInsets.only(bottom: 1.h),
                         decoration: BoxDecoration(
-                          color:
-                              state.isListening ? AppColors.teal : AppColors.card,
+                          color: state.isListening
+                              ? AppColors.teal
+                              : AppColors.card,
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: state.isListening
@@ -569,7 +567,8 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
                               ? [
                                   BoxShadow(
                                     color: AppColors.teal.withValues(
-                                        alpha: 0.25 + glow * 0.45),
+                                      alpha: 0.25 + glow * 0.45,
+                                    ),
                                     blurRadius: 6 + glow * 10,
                                     spreadRadius: glow * 4,
                                   ),
@@ -583,8 +582,9 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
                                   Text(
                                     '${secondsLeft}s',
                                     style: AppTextStyles.caption.copyWith(
-                                      color: AppColors.background
-                                          .withValues(alpha: 0.85),
+                                      color: AppColors.background.withValues(
+                                        alpha: 0.85,
+                                      ),
                                       fontWeight: FontWeight.bold,
                                       fontSize: 11.sp,
                                     ),
@@ -593,8 +593,9 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
                                     SizedBox(height: 2.h),
                                     Icon(
                                       Icons.lock,
-                                      color: AppColors.background
-                                          .withValues(alpha: 0.75),
+                                      color: AppColors.background.withValues(
+                                        alpha: 0.75,
+                                      ),
                                       size: 12.sp,
                                     ),
                                   ],
@@ -650,8 +651,10 @@ class _TalkScreenState extends ConsumerState<TalkScreen>
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24.r),
-                    borderSide:
-                        const BorderSide(color: AppColors.teal, width: 1.5),
+                    borderSide: const BorderSide(
+                      color: AppColors.teal,
+                      width: 1.5,
+                    ),
                   ),
                 ),
               ),
@@ -718,16 +721,14 @@ class _HearingBubble extends StatelessWidget {
                   SizedBox(width: 4.w),
                   Text(
                     'They said',
-                    style: AppTextStyles.caption
-                        .copyWith(fontSize: 11.sp),
+                    style: AppTextStyles.caption.copyWith(fontSize: 11.sp),
                   ),
                 ],
               ),
             ),
             // Bubble
             Container(
-              padding:
-                  EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
               decoration: BoxDecoration(
                 color: AppColors.card,
                 borderRadius: BorderRadius.only(
@@ -748,8 +749,11 @@ class _HearingBubble extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.volume_up,
-                            color: AppColors.teal, size: 13.sp),
+                        Icon(
+                          Icons.volume_up,
+                          color: AppColors.teal,
+                          size: 13.sp,
+                        ),
                         SizedBox(width: 4.w),
                         Text(
                           'Play aloud',
@@ -802,15 +806,13 @@ class _DeafBubble extends StatelessWidget {
                     style: AppTextStyles.caption.copyWith(fontSize: 11.sp),
                   ),
                   SizedBox(width: 4.w),
-                  Icon(Icons.keyboard,
-                      color: AppColors.textMuted, size: 11.sp),
+                  Icon(Icons.keyboard, color: AppColors.textMuted, size: 11.sp),
                 ],
               ),
             ),
             // Bubble
             Container(
-              padding:
-                  EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
               decoration: BoxDecoration(
                 color: AppColors.teal,
                 borderRadius: BorderRadius.only(
@@ -825,8 +827,9 @@ class _DeafBubble extends StatelessWidget {
                 children: [
                   Text(
                     message.text,
-                    style: AppTextStyles.bodyMedium
-                        .copyWith(color: AppColors.background),
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.background,
+                    ),
                   ),
                   SizedBox(height: 8.h),
                   Row(
@@ -840,16 +843,18 @@ class _DeafBubble extends StatelessWidget {
                           children: [
                             Icon(
                               Icons.open_in_full,
-                              color: AppColors.background
-                                  .withValues(alpha: 0.7),
+                              color: AppColors.background.withValues(
+                                alpha: 0.7,
+                              ),
                               size: 12.sp,
                             ),
                             SizedBox(width: 4.w),
                             Text(
                               'Show big',
                               style: AppTextStyles.caption.copyWith(
-                                color: AppColors.background
-                                    .withValues(alpha: 0.7),
+                                color: AppColors.background.withValues(
+                                  alpha: 0.7,
+                                ),
                                 fontSize: 11.sp,
                               ),
                             ),
@@ -865,16 +870,18 @@ class _DeafBubble extends StatelessWidget {
                           children: [
                             Icon(
                               Icons.volume_up,
-                              color: AppColors.background
-                                  .withValues(alpha: 0.7),
+                              color: AppColors.background.withValues(
+                                alpha: 0.7,
+                              ),
                               size: 12.sp,
                             ),
                             SizedBox(width: 4.w),
                             Text(
                               'Speak',
                               style: AppTextStyles.caption.copyWith(
-                                color: AppColors.background
-                                    .withValues(alpha: 0.7),
+                                color: AppColors.background.withValues(
+                                  alpha: 0.7,
+                                ),
                                 fontSize: 11.sp,
                               ),
                             ),
@@ -925,8 +932,7 @@ class _LiveTranscriptBubble extends StatelessWidget {
               ),
             ),
             Container(
-              padding:
-                  EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
               decoration: BoxDecoration(
                 color: AppColors.card,
                 borderRadius: BorderRadius.only(
@@ -944,8 +950,7 @@ class _LiveTranscriptBubble extends StatelessWidget {
                 text.isNotEmpty ? text : '…',
                 style: AppTextStyles.bodyMedium.copyWith(
                   color: AppColors.textSecondary,
-                  fontStyle:
-                      text.isEmpty ? FontStyle.italic : FontStyle.normal,
+                  fontStyle: text.isEmpty ? FontStyle.italic : FontStyle.normal,
                 ),
               ),
             ),

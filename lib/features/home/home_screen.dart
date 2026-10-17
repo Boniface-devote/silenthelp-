@@ -7,7 +7,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import '../../shared/widgets/feature_card.dart';
-import '../../shared/providers/locale_provider.dart';
 import '../../features/settings/settings_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -46,10 +45,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         backgroundColor: AppColors.background,
         elevation: 0,
         centerTitle: true,
-        title: Text(
-          'SILENTHELP',
-          style: AppTextStyles.heading2,
-        ),
+        title: Text('SILENTHELP', style: AppTextStyles.heading2),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -57,7 +53,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               // Greeting section
               profileAsync.when(
                 data: (profile) => Column(
@@ -68,10 +63,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       style: AppTextStyles.caption,
                     ),
                     SizedBox(height: 4.h),
-                    Text(
-                      profile.name,
-                      style: AppTextStyles.heading1,
-                    ),
+                    Text(profile.name, style: AppTextStyles.heading1),
                     SizedBox(height: 4.h),
                     Text(
                       context.tr('home_sub'),
@@ -90,107 +82,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               // SOS Button with pulse
               _buildPulsingSosButton(context),
 
-              SizedBox(height: 16.h),
-
-              InkWell(
-                onTap: () => context.go(AppConstants.routeTrustedCircle),
-                borderRadius: BorderRadius.circular(16.r),
-                child: Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(16.w),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(16.r),
-                    border: Border.all(color: AppColors.teal),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(10.w),
-                        decoration: BoxDecoration(
-                          color: AppColors.teal.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        child: Icon(
-                          Icons.groups_outlined,
-                          color: AppColors.teal,
-                          size: 26.sp,
-                        ),
-                      ),
-                      SizedBox(width: 12.w),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Trusted Circle', style: AppTextStyles.labelLarge),
-                            SizedBox(height: 2.h),
-                            Text(
-                              'View your trusted contacts and support plan',
-                              style: AppTextStyles.caption.copyWith(
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(Icons.chevron_right, color: AppColors.teal),
-                    ],
-                  ),
-                ),
-              ),
-
-              SizedBox(height: 12.h),
-
-              InkWell(
-                onTap: () => context.go(AppConstants.routeNearbyPlaces),
-                borderRadius: BorderRadius.circular(16.r),
-                child: Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(16.w),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(16.r),
-                    border: Border.all(color: AppColors.blue),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(10.w),
-                        decoration: BoxDecoration(
-                          color: AppColors.blue.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        child: Icon(
-                          Icons.map_outlined,
-                          color: AppColors.blue,
-                          size: 26.sp,
-                        ),
-                      ),
-                      SizedBox(width: 12.w),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Trusted Places', style: AppTextStyles.labelLarge),
-                            SizedBox(height: 2.h),
-                            Text(
-                              'Find safe spaces, clinics, hospitals, and police',
-                              style: AppTextStyles.caption.copyWith(
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(Icons.chevron_right, color: AppColors.blue),
-                    ],
-                  ),
-                ),
-              ),
-
               SizedBox(height: 24.h),
 
-              // Feature Grid (4 items)
+              // Home shortcuts use the same two-column card layout.
               GridView.count(
                 crossAxisCount: 2,
                 shrinkWrap: true,
@@ -199,14 +93,54 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 mainAxisSpacing: 12.h,
                 childAspectRatio: 1.0,
                 children: [
-                  // Talk Mode
                   FeatureCard(
                     iconBgColor: AppColors.tealDark,
                     icon: Icon(
-                      Icons.mic,
+                      Icons.groups_outlined,
                       color: AppColors.teal,
                       size: 28.sp,
                     ),
+                    title: context.tr('trusted_circle_title'),
+                    subtitle: context.tr('trusted_circle_subtitle'),
+                    onTap: () => context.go(AppConstants.routeTrustedCircle),
+                  ),
+                  FeatureCard(
+                    iconBgColor: const Color(0xFF0F1E3A),
+                    icon: Icon(
+                      Icons.map_outlined,
+                      color: AppColors.blue,
+                      size: 28.sp,
+                    ),
+                    title: context.tr('places_title'),
+                    subtitle: context.tr('places_subtitle'),
+                    onTap: () => context.go(AppConstants.routeNearbyPlaces),
+                  ),
+                  FeatureCard(
+                    iconBgColor: AppColors.purple.withValues(alpha: 0.2),
+                    icon: Icon(
+                      Icons.shield_outlined,
+                      color: AppColors.purple,
+                      size: 28.sp,
+                    ),
+                    title: context.tr('digital_safety_title'),
+                    subtitle: context.tr('digital_home_subtitle'),
+                    onTap: () => context.go(AppConstants.routeDigitalSafety),
+                  ),
+                  FeatureCard(
+                    iconBgColor: AppColors.tealDark,
+                    icon: Icon(
+                      Icons.shield_moon_outlined,
+                      color: AppColors.teal,
+                      size: 28.sp,
+                    ),
+                    title: context.tr('safety_plan_title'),
+                    subtitle: context.tr('safety_plan_home_subtitle'),
+                    onTap: () => context.go(AppConstants.routeSafetyPlan),
+                  ),
+                  // Talk Mode
+                  FeatureCard(
+                    iconBgColor: AppColors.tealDark,
+                    icon: Icon(Icons.mic, color: AppColors.teal, size: 28.sp),
                     title: context.tr('talk'),
                     subtitle: context.tr('talk_sub'),
                     onTap: () => context.go(AppConstants.routeTalk),
@@ -298,7 +232,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   String _getTimeBasedGreeting(BuildContext context) {
     final hour = DateTime.now().hour;
-    
+
     if (hour >= 5 && hour < 12) {
       return context.tr('greeting_morning');
     } else if (hour >= 12 && hour < 17) {
@@ -315,17 +249,9 @@ class ShimmerLoader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          height: 12.h,
-          width: 80.w,
-          color: AppColors.card,
-        ),
+        Container(height: 12.h, width: 80.w, color: AppColors.card),
         SizedBox(height: 8.h),
-        Container(
-          height: 32.h,
-          width: 200.w,
-          color: AppColors.card,
-        ),
+        Container(height: 32.h, width: 200.w, color: AppColors.card),
       ],
     );
   }

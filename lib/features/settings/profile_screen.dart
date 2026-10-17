@@ -11,7 +11,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
-import '../../shared/widgets/language_bar.dart';
+import '../../core/services/haptics_service.dart';
 import 'settings_provider.dart';
 
 class ContactSelectionData {
@@ -30,22 +30,23 @@ ContactSelectionData buildContactSelectionData(Contact contact) {
   return ContactSelectionData(name: contactName, phoneNumber: phoneNumber);
 }
 
-class SettingsScreen extends ConsumerStatefulWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+class ProfileScreen extends ConsumerStatefulWidget {
+  const ProfileScreen({super.key});
 
   static FlutterContactPickerPlus createContactPicker() {
     return FlutterContactPickerPlus();
   }
 
   @override
-  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _profileLoaded = false;
   bool _profileLoadFailed = false;
   bool _isSaving = false;
+  UserProfile? _loadedProfile;
   late TextEditingController _nameController;
   late TextEditingController _conditionController;
   late TextEditingController _phoneController;
@@ -111,13 +112,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => context.go(AppConstants.routeHome),
+          onPressed: () => context.go(AppConstants.routeSettings),
         ),
         centerTitle: true,
-        title: Text(
-          context.tr('settings_title'),
-          style: AppTextStyles.heading2,
-        ),
+        title: Text(context.tr('profile_title'), style: AppTextStyles.heading2),
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
@@ -126,9 +124,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Language Bar
-              LanguageBar(),
-
               if (!_profileLoaded && !_profileLoadFailed)
                 Padding(
                   padding: EdgeInsets.only(top: 12.h),
@@ -422,6 +417,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       final profile = await ref.read(settingsProvider.future);
       if (!mounted) return;
 
+      _loadedProfile = profile;
       _nameController.text = profile.name;
       _conditionController.text = profile.condition;
       _phoneController.text = profile.phone;
@@ -463,6 +459,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     TextEditingController nameController,
   ) {
     final phone = value?.trim() ?? '';
+    if (phone.isNotEmpty && nameController.text.trim().isEmpty) {
+      return 'Enter a name for this contact.';
+    }
     if (phone.isEmpty && nameController.text.trim().isNotEmpty) {
       return 'Enter a phone number for this contact.';
     }
@@ -515,7 +514,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
 
     try {
-      final contactPicker = SettingsScreen.createContactPicker();
+      final contactPicker = ProfileScreen.createContactPicker();
       final contact = await contactPicker.selectContact();
 
       if (contact == null) {
@@ -578,10 +577,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       medicalContactNumber: _medicalContactPhoneController.text.trim(),
       medicalContactLabel: _medicalContactLabelController.text.trim(),
     );
+    final hasNewTrustedPerson =
+        _loadedProfile != null &&
+        _hasNewTrustedPerson(_loadedProfile!, profile);
 
     setState(() => _isSaving = true);
     try {
       await ref.read(settingsProvider.notifier).saveProfile(profile);
+      _loadedProfile = profile;
+      if (hasNewTrustedPerson) {
+        await HapticsService.strongConfirmation();
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -601,6 +607,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  bool _hasNewTrustedPerson(UserProfile previous, UserProfile updated) {
+    final previousNumbers = _trustedPhoneNumbers(previous);
+    return _trustedPhoneNumbers(
+      updated,
+    ).any((phoneNumber) => !previousNumbers.contains(phoneNumber));
+  }
+
+  Set<String> _trustedPhoneNumbers(UserProfile profile) {
+    final rawNumbers = [
+      profile.emContactNumber,
+      profile.secondContactNumber,
+      profile.medicalContactNumber,
+    ];
+    return rawNumbers
+        .map((number) => number.trim())
+        .where((number) => !number.contains('X'))
+        .map((number) => number.replaceAll(RegExp(r'\D'), ''))
+        .where((number) => number.length >= 7 && number.length <= 15)
+        .toSet();
   }
 
   Widget _buildProfileCompletionWidget(WidgetRef ref) {

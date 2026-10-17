@@ -8,6 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import '../../shared/widgets/responsive_shell.dart';
+import '../../shared/widgets/language_bar.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -17,6 +18,8 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 }
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
+  static const _pageCount = 7;
+
   late PageController _pageController;
   int _currentPage = 0;
 
@@ -41,7 +44,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   void _nextPage() {
-    if (_currentPage < 4) {
+    if (_currentPage < _pageCount - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -55,6 +58,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     _completeOnboarding();
   }
 
+  Widget _scrollablePage(Widget page) {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: page,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -62,20 +76,25 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       body: ResponsiveShell(
         child: Stack(
           children: [
-            PageView(
-              controller: _pageController,
-              onPageChanged: (page) {
-                setState(() {
-                  _currentPage = page;
-                });
-              },
-              children: [
-                _buildWelcomePage(),
-                _buildSOSPage(),
-                _buildProfilePage(),
-                _buildLanguagePage(),
-                _buildPhrasesPage(),
-              ],
+            Padding(
+              padding: EdgeInsets.only(bottom: 140.h),
+              child: PageView(
+                controller: _pageController,
+                onPageChanged: (page) {
+                  setState(() {
+                    _currentPage = page;
+                  });
+                },
+                children: [
+                  _scrollablePage(_buildWelcomePage()),
+                  _scrollablePage(_buildSOSPage()),
+                  _scrollablePage(_buildTrustedSupportPage()),
+                  _scrollablePage(_buildDigitalSafetyPage()),
+                  _scrollablePage(_buildProfilePage()),
+                  _scrollablePage(_buildLanguagePage()),
+                  _scrollablePage(_buildPhrasesPage()),
+                ],
+              ),
             ),
             // Top Skip Button
             Positioned(
@@ -112,7 +131,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     // Page Indicators
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(5, (index) {
+                      children: List.generate(_pageCount, (index) {
                         return Container(
                           margin: EdgeInsets.symmetric(horizontal: 4.w),
                           width: index == _currentPage ? 24.w : 8.w,
@@ -167,7 +186,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                             ),
                             onPressed: _nextPage,
                             child: Text(
-                              _currentPage == 4
+                              _currentPage == _pageCount - 1
                                   ? context.tr('onboarding_start')
                                   : context.tr('onboarding_next'),
                               style: AppTextStyles.buttonMedium.copyWith(
@@ -201,11 +220,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               color: AppColors.teal.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(50.r),
             ),
-            child: Icon(
-              Icons.waving_hand,
-              size: 60.sp,
-              color: AppColors.teal,
-            ),
+            child: Icon(Icons.waving_hand, size: 60.sp, color: AppColors.teal),
           ),
           SizedBox(height: 40.h),
           Text(
@@ -237,6 +252,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               textAlign: TextAlign.center,
             ),
           ),
+          SizedBox(height: 16.h),
+          const LanguageBar(),
         ],
       ),
     );
@@ -255,11 +272,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               color: AppColors.red.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(50.r),
             ),
-            child: Icon(
-              Icons.emergency,
-              size: 60.sp,
-              color: AppColors.red,
-            ),
+            child: Icon(Icons.emergency, size: 60.sp, color: AppColors.red),
           ),
           SizedBox(height: 40.h),
           Text(
@@ -299,11 +312,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               color: AppColors.purple.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(50.r),
             ),
-            child: Icon(
-              Icons.person,
-              size: 60.sp,
-              color: AppColors.purple,
-            ),
+            child: Icon(Icons.person, size: 60.sp, color: AppColors.purple),
           ),
           SizedBox(height: 40.h),
           Text(
@@ -330,6 +339,94 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
+  Widget _buildTrustedSupportPage() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 60.h),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 100.w,
+            height: 100.w,
+            decoration: BoxDecoration(
+              color: AppColors.teal.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(50.r),
+            ),
+            child: Icon(
+              Icons.groups_outlined,
+              size: 60.sp,
+              color: AppColors.teal,
+            ),
+          ),
+          SizedBox(height: 32.h),
+          Text(
+            context.tr('onboarding_circle_title'),
+            style: AppTextStyles.heading1,
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 16.h),
+          Text(
+            context.tr('onboarding_circle_subtitle'),
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 24.h),
+          ..._buildStepsList([
+            context.tr('onboarding_circle_step1'),
+            context.tr('onboarding_circle_step2'),
+            context.tr('onboarding_circle_step3'),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDigitalSafetyPage() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 60.h),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 100.w,
+            height: 100.w,
+            decoration: BoxDecoration(
+              color: AppColors.purple.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(50.r),
+            ),
+            child: Icon(
+              Icons.shield_outlined,
+              size: 60.sp,
+              color: AppColors.purple,
+            ),
+          ),
+          SizedBox(height: 32.h),
+          Text(
+            context.tr('onboarding_digital_title'),
+            style: AppTextStyles.heading1,
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 16.h),
+          Text(
+            context.tr('onboarding_digital_subtitle'),
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 24.h),
+          ..._buildStepsList([
+            context.tr('onboarding_digital_step1'),
+            context.tr('onboarding_digital_step2'),
+            context.tr('onboarding_digital_step3'),
+          ]),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLanguagePage() {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 60.h),
@@ -343,11 +440,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               color: AppColors.blue.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(50.r),
             ),
-            child: Icon(
-              Icons.language,
-              size: 60.sp,
-              color: AppColors.blue,
-            ),
+            child: Icon(Icons.language, size: 60.sp, color: AppColors.blue),
           ),
           SizedBox(height: 40.h),
           Text(
@@ -391,6 +484,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               ],
             ),
           ),
+          SizedBox(height: 12.h),
+          const LanguageBar(),
         ],
       ),
     );
@@ -409,11 +504,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               color: AppColors.yellow.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(50.r),
             ),
-            child: Icon(
-              Icons.message,
-              size: 60.sp,
-              color: AppColors.yellow,
-            ),
+            child: Icon(Icons.message, size: 60.sp, color: AppColors.yellow),
           ),
           SizedBox(height: 40.h),
           Text(
@@ -429,32 +520,25 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
             textAlign: TextAlign.center,
           ),
+          SizedBox(height: 12.h),
+          Text(
+            context.tr('onboarding_phrases_desc'),
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
           SizedBox(height: 24.h),
           Wrap(
             spacing: 8.w,
             runSpacing: 8.h,
             alignment: WrapAlignment.center,
             children: [
-              _buildCategoryBadge(
-                context.tr('cat_emergency'),
-                AppColors.red,
-              ),
-              _buildCategoryBadge(
-                context.tr('cat_daily'),
-                AppColors.teal,
-              ),
-              _buildCategoryBadge(
-                context.tr('cat_medical'),
-                AppColors.blue,
-              ),
-              _buildCategoryBadge(
-                context.tr('cat_shopping'),
-                AppColors.yellow,
-              ),
-              _buildCategoryBadge(
-                context.tr('cat_office'),
-                AppColors.purple,
-              ),
+              _buildCategoryBadge(context.tr('cat_emergency'), AppColors.red),
+              _buildCategoryBadge(context.tr('cat_daily'), AppColors.teal),
+              _buildCategoryBadge(context.tr('cat_medical'), AppColors.blue),
+              _buildCategoryBadge(context.tr('cat_shopping'), AppColors.yellow),
+              _buildCategoryBadge(context.tr('cat_office'), AppColors.purple),
             ],
           ),
         ],
@@ -513,12 +597,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 ),
               ),
               SizedBox(width: 12.w),
-              Expanded(
-                child: Text(
-                  step,
-                  style: AppTextStyles.bodySmall,
-                ),
-              ),
+              Expanded(child: Text(step, style: AppTextStyles.bodySmall)),
             ],
           ),
         ),

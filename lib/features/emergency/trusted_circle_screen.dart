@@ -26,18 +26,36 @@ class TrustedCircleScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Your check-in messages go only to contacts saved in Settings. '
+              'Your check-in messages go only to contacts saved in Profile. '
               'Review these people and their numbers before relying on this feature.',
-              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted),
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textMuted,
+              ),
             ),
             SizedBox(height: 20.h),
             profileAsync.when(
               data: (profile) {
-                final entries = [
-                  ('Primary trusted contact', profile.emContactName, profile.emContactNumber),
-                  (profile.secondContactLabel, profile.secondContactName, profile.secondContactNumber),
-                  (profile.medicalContactLabel, profile.medicalContactName, profile.medicalContactNumber),
-                ].where((entry) => entry.$3.trim().isNotEmpty && !entry.$3.contains('X'));
+                final entries =
+                    [
+                      (
+                        'Primary trusted contact',
+                        profile.emContactName,
+                        profile.emContactNumber,
+                      ),
+                      (
+                        profile.secondContactLabel,
+                        profile.secondContactName,
+                        profile.secondContactNumber,
+                      ),
+                      (
+                        profile.medicalContactLabel,
+                        profile.medicalContactName,
+                        profile.medicalContactNumber,
+                      ),
+                    ].where(
+                      (entry) =>
+                          entry.$3.trim().isNotEmpty && !entry.$3.contains('X'),
+                    );
 
                 return Column(
                   children: [
@@ -46,8 +64,13 @@ class TrustedCircleScreen extends ConsumerWidget {
                         color: AppColors.card,
                         child: ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: AppColors.teal.withValues(alpha: 0.18),
-                            child: Icon(Icons.person_outline, color: AppColors.teal),
+                            backgroundColor: AppColors.teal.withValues(
+                              alpha: 0.18,
+                            ),
+                            child: Icon(
+                              Icons.person_outline,
+                              color: AppColors.teal,
+                            ),
                           ),
                           title: Text(
                             entry.$2.isEmpty ? entry.$1 : entry.$2,
@@ -61,22 +84,25 @@ class TrustedCircleScreen extends ConsumerWidget {
                         child: ListTile(
                           leading: Icon(Icons.info_outline),
                           title: Text('No trusted contacts added yet'),
-                          subtitle: Text('Add contacts in Settings to use Safe Check-In.'),
+                          subtitle: Text(
+                            'Add contacts in Profile to use Safe Check-In.',
+                          ),
                         ),
                       ),
                   ],
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, __) => const Text('Could not load your saved contacts.'),
+              error: (_, __) =>
+                  const Text('Could not load your saved contacts.'),
             ),
             SizedBox(height: 12.h),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () => context.go(AppConstants.routeSettings),
+                onPressed: () => context.go(AppConstants.routeProfile),
                 icon: const Icon(Icons.edit_outlined),
-                label: const Text('Add or edit contacts in Settings'),
+                label: const Text('Add or edit contacts in Profile'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.teal,
                   side: const BorderSide(color: AppColors.teal),
@@ -91,19 +117,22 @@ class TrustedCircleScreen extends ConsumerWidget {
               icon: Icons.check_circle_outline,
               color: AppColors.teal,
               title: 'I am safe',
-              detail: 'Sends a status update to your primary and family/teacher contacts.',
+              detail:
+                  'Sends a status update to your primary and family/teacher contacts.',
             ),
             _EscalationTile(
               icon: Icons.support_agent,
               color: AppColors.yellow,
               title: 'Need support',
-              detail: 'Sends the selected risk category to your primary and family/teacher contacts.',
+              detail:
+                  'Sends the selected risk category to your primary and family/teacher contacts.',
             ),
             _EscalationTile(
               icon: Icons.emergency_outlined,
               color: AppColors.red,
               title: 'Danger now',
-              detail: 'Sends the alert to every configured trusted contact, including your medical contact.',
+              detail:
+                  'Sends the alert to every configured trusted contact, including your medical contact.',
             ),
             SizedBox(height: 12.h),
             Text(

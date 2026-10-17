@@ -2,7 +2,7 @@ import 'package:flutter_native_contact_picker_plus/flutter_native_contact_picker
 import 'package:flutter_native_contact_picker_plus/model/contact_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silenthelp/features/settings/settings_provider.dart';
-import 'package:silenthelp/features/settings/settings_screen.dart';
+import 'package:silenthelp/features/settings/profile_screen.dart';
 
 void main() {
   group('contact picker fallback', () {
@@ -15,7 +15,7 @@ void main() {
     });
 
     test('creates the picker instance exposed by the package', () {
-      final picker = SettingsScreen.createContactPicker();
+      final picker = ProfileScreen.createContactPicker();
 
       expect(picker, isA<FlutterContactPickerPlus>());
     });
@@ -54,4 +54,3 @@ void main() {
     });
   });
 }
-
