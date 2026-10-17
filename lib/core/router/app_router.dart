@@ -11,6 +11,7 @@ import '../../features/phrases/phrases_screen.dart';
 import '../../features/id_card/id_card_screen.dart';
 import '../../features/learn/learn_screen.dart';
 import '../../features/settings/settings_screen.dart';
+import '../../features/emergency/trusted_circle_screen.dart';
 import '../../shared/widgets/bottom_nav.dart';
 
 // Check if onboarding is complete
@@ -100,6 +101,13 @@ final GoRouter appRouter = GoRouter(
           name: 'settings',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: SettingsScreen(),
+          ),
+        ),
+        GoRoute(
+          path: AppConstants.routeTrustedCircle,
+          name: 'trusted-circle',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: TrustedCircleScreen(),
           ),
         ),
       ],

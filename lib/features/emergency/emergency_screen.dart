@@ -49,6 +49,249 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     super.dispose();
   }
 
+  Widget _buildSafeCheckInCard(
+    AsyncValue<UserProfile> profileAsync,
+    bool isSending,
+  ) {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Safe Check-In', style: AppTextStyles.heading2),
+          SizedBox(height: 4.h),
+          Text(
+            'Send a private status update to your Trusted Circle by SMS.',
+            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted),
+          ),
+          SizedBox(height: 12.h),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: isSending ? null : () => _sendSafeStatus(profileAsync),
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: Text(isSending ? 'Sending...' : 'I am safe'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.teal,
+                    side: const BorderSide(color: AppColors.teal),
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
+                  ),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: isSending ? null : () => _requestHelp(profileAsync),
+                  icon: const Icon(Icons.support_agent),
+                  label: Text(isSending ? 'Sending...' : 'I need help'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.red,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _sendSafeStatus(AsyncValue<UserProfile> profileAsync) async {
+    final profile = profileAsync.valueOrNull;
+    if (profile == null) return;
+    final contacts = _trustedContacts(profile, includeMedical: false);
+    await _sendCheckIn(
+      contacts: contacts,
+      status: 'SAFE',
+      category: 'None',
+    );
+  }
+
+  Future<void> _requestHelp(AsyncValue<UserProfile> profileAsync) async {
+    final profile = profileAsync.valueOrNull;
+    if (profile == null) return;
+
+    var category = 'Abuse';
+    var danger = 'Need support';
+    final selection = await showDialog<(String, String)>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Request support'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('What do you need help with?'),
+                for (final option in const [
+                  'Abuse',
+                  'Forced marriage',
+                  'FGM',
+                  'Other safety concern',
+                ])
+                  RadioListTile<String>(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(option),
+                    value: option,
+                    groupValue: category,
+                    onChanged: (value) => setDialogState(() => category = value!),
+                  ),
+                const SizedBox(height: 8),
+                const Text('How urgent is it?'),
+                for (final option in const ['Need support', 'Danger now'])
+                  RadioListTile<String>(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(option),
+                    value: option,
+                    groupValue: danger,
+                    onChanged: (value) => setDialogState(() => danger = value!),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, (category, danger)),
+              child: const Text('Continue'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (selection == null) return;
+
+    final urgent = selection.$2 == 'Danger now';
+    final contacts = _trustedContacts(profile, includeMedical: urgent);
+    if (contacts.isEmpty) {
+      _showCheckInMessage('Add a trusted contact in Settings first.');
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Send help request?'),
+        content: Text(
+          'This sends your ${selection.$1} request to ${contacts.length} '
+          'trusted contact(s), with your current location if available.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Send SMS'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    await _sendCheckIn(
+      contacts: contacts,
+      status: urgent ? 'URGENT HELP' : 'NEED SUPPORT',
+      category: selection.$1,
+    );
+  }
+
+  List<({String name, String number})> _trustedContacts(
+    UserProfile profile, {
+    bool includeMedical = true,
+  }) {
+    final contacts = <({String name, String number})>[
+      (name: profile.emContactName, number: profile.emContactNumber),
+      (name: profile.secondContactName, number: profile.secondContactNumber),
+      if (includeMedical)
+        (name: profile.medicalContactName, number: profile.medicalContactNumber),
+    ];
+    final seen = <String>{};
+    return contacts.where((contact) {
+      final number = contact.number.trim();
+      if (number.isEmpty || number.contains('X')) return false;
+      return seen.add(number.replaceAll(RegExp(r'[^0-9+]'), ''));
+    }).toList();
+  }
+
+  Future<void> _sendCheckIn({
+    required List<({String name, String number})> contacts,
+    required String status,
+    required String category,
+  }) async {
+    if (contacts.isEmpty) {
+      _showCheckInMessage('Add a trusted contact in Settings first.');
+      return;
+    }
+
+    CachedLocation? location = ref.read(emergencyProvider).currentLocation;
+    location ??= await LocationService.getCachedLocation();
+    if (location == null) {
+      try {
+        if (await LocationService.ensureLocationPermission()) {
+          location = await LocationService.getFullLocation();
+        }
+      } catch (_) {
+        location = null;
+      }
+    }
+    final timestamp = DateTime.now().toLocal().toIso8601String();
+    final coords = location == null
+        ? 'Unknown'
+        : '${location.latitude.toStringAsFixed(4)},${location.longitude.toStringAsFixed(4)}';
+    final locationUrl = location == null
+        ? 'Unknown'
+        : 'https://maps.google.com/?q=$coords';
+    final message = 'SilentHelp $status. Risk: $category. Time: $timestamp. '
+        'Location: $locationUrl. I am Deaf; please text me.';
+
+    var sentCount = 0;
+    var openedCount = 0;
+    ref.read(emergencyProvider.notifier).setSendingSos(true);
+    try {
+      for (final contact in contacts) {
+        final result = await SmsService.sendSms(
+          phone: contact.number,
+          message: message,
+        );
+        if (result.sent) sentCount++;
+        if (result.status == 'sms_app_opened') openedCount++;
+      }
+      final summary = sentCount > 0
+          ? 'SMS sent to $sentCount of ${contacts.length} trusted contact(s).'
+          : openedCount > 0
+              ? 'SMS app opened. Review and send each prepared message.'
+              : 'Could not send the SMS. Check your contacts and try again.';
+      _showCheckInMessage(summary);
+    } catch (error) {
+      _showCheckInMessage('Could not send check-in: $error');
+    } finally {
+      ref.read(emergencyProvider.notifier).setSendingSos(false);
+    }
+  }
+
+  void _showCheckInMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 5)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final emergencyState = ref.watch(emergencyProvider);
@@ -86,6 +329,10 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                 ),
               ),
             ),
+
+            SizedBox(height: 24.h),
+
+            _buildSafeCheckInCard(profileAsync, emergencyState.isSendingSos),
 
             SizedBox(height: 24.h),
 
@@ -239,6 +486,18 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
               ),
             ),
             SizedBox(height: 16.h),
+
+            OutlinedButton.icon(
+              onPressed: () => context.go(AppConstants.routeTrustedCircle),
+              icon: const Icon(Icons.group_outlined),
+              label: const Text('Manage Trusted Circle and escalation'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.teal,
+                side: const BorderSide(color: AppColors.teal),
+                minimumSize: Size(double.infinity, 48.h),
+              ),
+            ),
+            SizedBox(height: 12.h),
 
             profileAsync.when(
               data: (profile) => Column(
@@ -767,7 +1026,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('SOS was rerouted to the default SMS app. Please send the message there.'),
+              content: const Text('SMS app opened. Please send the SOS message.'),
               backgroundColor: const Color(0xFFFFA000),
               duration: const Duration(seconds: 4),
             ),

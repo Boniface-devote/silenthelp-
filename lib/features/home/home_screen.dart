@@ -105,7 +105,56 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               // SOS Button with pulse
               _buildPulsingSosButton(context),
 
-              SizedBox(height: 32.h),
+              SizedBox(height: 16.h),
+
+              InkWell(
+                onTap: () => context.go(AppConstants.routeTrustedCircle),
+                borderRadius: BorderRadius.circular(16.r),
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(16.w),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(16.r),
+                    border: Border.all(color: AppColors.teal),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(10.w),
+                        decoration: BoxDecoration(
+                          color: AppColors.teal.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        child: Icon(
+                          Icons.groups_outlined,
+                          color: AppColors.teal,
+                          size: 26.sp,
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Trusted Circle', style: AppTextStyles.labelLarge),
+                            SizedBox(height: 2.h),
+                            Text(
+                              'View your trusted contacts and support plan',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: AppColors.teal),
+                    ],
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 24.h),
 
               // Feature Grid (4 items)
               GridView.count(

@@ -84,8 +84,8 @@ class MainActivity : FlutterActivity() {
             mainHandler.removeCallbacksAndMessages(null)
         }
 
-        val submitResult = lambda@{
-            if (resultSent) return@lambda
+        fun submitResult() {
+            if (resultSent) return
             resultSent = true
 
             val sentOk = sendStatuses.size == totalParts && sendStatuses.values.all { it }

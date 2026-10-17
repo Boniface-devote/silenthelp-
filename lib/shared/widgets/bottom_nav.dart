@@ -68,7 +68,8 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold> {
     final location = GoRouterState.of(context).uri.path;
     
     if (location == AppConstants.routeHome) return 0;
-    if (location == AppConstants.routeEmergency) return 1;
+    if (location == AppConstants.routeEmergency ||
+        location == AppConstants.routeTrustedCircle) return 1;
     if (location == AppConstants.routeTalk) return 2;
     if (location == AppConstants.routePhrases) return 3;
     if (location == AppConstants.routeIdCard) return 4;
