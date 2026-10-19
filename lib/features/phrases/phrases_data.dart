@@ -130,7 +130,13 @@ class PhrasesData {
     final key = category.toLowerCase();
     if (phrases.containsKey(key) && index < phrases[key]!.length) {
       final parts = phrases[key]![index].split('|');
-      final langIndex = language == 'en' ? 0 : language == 'sw' ? 1 : 2;
+      final langIndex = language == 'en'
+          ? 0
+          : language == 'sw'
+          ? 1
+          : language == 'lg'
+          ? 2
+          : 0;
       return langIndex < parts.length ? parts[langIndex] : parts[0];
     }
     return '';

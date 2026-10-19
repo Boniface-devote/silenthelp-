@@ -284,7 +284,9 @@ class _PhrasesScreenState extends ConsumerState<PhrasesScreen> {
                     ? 0
                     : language == 'sw'
                     ? 1
-                    : 2;
+                    : language == 'lg'
+                    ? 2
+                    : 0;
                 final primary = langIdx < parts.length
                     ? parts[langIdx]
                     : parts[0];

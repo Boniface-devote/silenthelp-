@@ -63,10 +63,10 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Safe Check-In', style: AppTextStyles.heading2),
+          Text(context.tr('safe_checkin_title'), style: AppTextStyles.heading2),
           SizedBox(height: 4.h),
           Text(
-            'Send a private status update to your Trusted Circle by SMS.',
+            context.tr('safe_checkin_subtitle'),
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted),
           ),
           SizedBox(height: 12.h),
@@ -78,7 +78,9 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                       ? null
                       : () => _sendSafeStatus(profileAsync),
                   icon: const Icon(Icons.check_circle_outline),
-                  label: Text(isSending ? 'Sending...' : 'I am safe'),
+                  label: Text(
+                    context.tr(isSending ? 'sending' : 'checkin_safe_button'),
+                  ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.teal,
                     side: const BorderSide(color: AppColors.teal),
@@ -93,7 +95,9 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                       ? null
                       : () => _requestHelp(profileAsync),
                   icon: const Icon(Icons.support_agent),
-                  label: Text(isSending ? 'Sending...' : 'I need help'),
+                  label: Text(
+                    context.tr(isSending ? 'sending' : 'checkin_help_button'),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.red,
                     foregroundColor: Colors.white,
@@ -114,34 +118,38 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     final contacts = await _chooseCheckInRecipients(
       allContacts: _trustedContacts(profile),
       defaults: _trustedContacts(profile, includeMedical: false),
-      title: 'Send safe check-in to',
+      title: context.tr('checkin_choose_safe_recipients'),
     );
     if (contacts == null) return;
-    await _sendCheckIn(contacts: contacts, status: 'SAFE', category: 'None');
+    await _sendCheckIn(
+      contacts: contacts,
+      status: context.tr('checkin_status_safe'),
+      category: context.tr('risk_none'),
+    );
   }
 
   Future<void> _requestHelp(AsyncValue<UserProfile> profileAsync) async {
     final profile = profileAsync.valueOrNull;
     if (profile == null) return;
 
-    var category = 'Abuse';
-    var danger = 'Need support';
+    var category = context.tr('risk_abuse');
+    var danger = context.tr('danger_support');
     final selection = await showDialog<(String, String)>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Request support'),
+          title: Text(context.tr('checkin_request_support_title')),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('What do you need help with?'),
-                for (final option in const [
-                  'Abuse',
-                  'Forced marriage',
-                  'FGM',
-                  'Other safety concern',
+                Text(context.tr('checkin_help_category_prompt')),
+                for (final option in [
+                  context.tr('risk_abuse'),
+                  context.tr('risk_forced_marriage'),
+                  context.tr('risk_fgm'),
+                  context.tr('risk_other_safety'),
                 ])
                   RadioListTile<String>(
                     dense: true,
@@ -153,8 +161,11 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                         setDialogState(() => category = value!),
                   ),
                 const SizedBox(height: 8),
-                const Text('How urgent is it?'),
-                for (final option in const ['Need support', 'Danger now'])
+                Text(context.tr('checkin_urgency_prompt')),
+                for (final option in [
+                  context.tr('danger_support'),
+                  context.tr('danger_now'),
+                ])
                   RadioListTile<String>(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
@@ -169,11 +180,11 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
+              child: Text(context.tr('cancel')),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialogContext, (category, danger)),
-              child: const Text('Continue'),
+              child: Text(context.tr('continue')),
             ),
           ],
         ),
@@ -181,31 +192,37 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     );
     if (selection == null) return;
 
-    final urgent = selection.$2 == 'Danger now';
+    final urgent = selection.$2 == context.tr('danger_now');
     final contacts = await _chooseCheckInRecipients(
       allContacts: _trustedContacts(profile),
       defaults: _trustedContacts(profile, includeMedical: urgent),
-      title: 'Send help request to',
+      title: context.tr('checkin_choose_help_recipients'),
     );
     if (contacts == null) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Send help request?'),
+        title: Text(context.tr('checkin_confirm_help_title')),
         content: Text(
-          'This sends your ${selection.$1} request to '
-          '${contacts.map((contact) => contact.name.isEmpty ? contact.role : contact.name).join(', ')}, '
-          'with your current location if available.',
+          context.tr(
+            'checkin_confirm_help_body',
+            namedArgs: {
+              'category': selection.$1,
+              'contacts': contacts
+                  .map((contact) => contact.name.isEmpty ? contact.role : contact.name)
+                  .join(', '),
+            },
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
+            child: Text(context.tr('cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Send SMS'),
+            child: Text(context.tr('send_sms')),
           ),
         ],
       ),
@@ -214,7 +231,9 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
 
     await _sendCheckIn(
       contacts: contacts,
-      status: urgent ? 'URGENT HELP' : 'NEED SUPPORT',
+      status: context.tr(
+        urgent ? 'checkin_status_urgent' : 'checkin_status_help',
+      ),
       category: selection.$1,
     );
   }
@@ -226,7 +245,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     required String title,
   }) async {
     if (allContacts.isEmpty) {
-      _showCheckInMessage('Add a trusted contact in Profile first.');
+      _showCheckInMessage(context.tr('checkin_add_contact_first'));
       return null;
     }
 
@@ -246,7 +265,9 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                   title: Text(
                     contact.name.isEmpty ? contact.role : contact.name,
                   ),
-                  subtitle: Text('${contact.role} · ${contact.number}'),
+                  subtitle: Text(
+                    '${contact.role} · ${contact.number}',
+                  ),
                   onChanged: (selected) => setDialogState(() {
                     if (selected == true) {
                       selectedNumbers.add(contact.number);
@@ -260,7 +281,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
+              child: Text(context.tr('cancel')),
             ),
             FilledButton(
               onPressed: selectedNumbers.isEmpty
@@ -274,7 +295,12 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                           )
                           .toList(),
                     ),
-              child: Text('Continue (${selectedNumbers.length})'),
+              child: Text(
+                context.tr(
+                  'continue_count',
+                  namedArgs: {'count': '${selectedNumbers.length}'},
+                ),
+              ),
             ),
           ],
         ),
@@ -289,18 +315,26 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     final contacts = <({String name, String role, String number})>[
       (
         name: profile.emContactName,
-        role: 'Primary contact',
+        role: context.tr('role_primary_contact'),
         number: profile.emContactNumber,
       ),
       (
         name: profile.secondContactName,
-        role: profile.secondContactLabel,
+        role: _localizedContactRole(
+          profile.secondContactLabel,
+          'Family / Teacher',
+          'role_family_teacher',
+        ),
         number: profile.secondContactNumber,
       ),
       if (includeMedical)
         (
           name: profile.medicalContactName,
-          role: profile.medicalContactLabel,
+          role: _localizedContactRole(
+            profile.medicalContactLabel,
+            'Doctor / Nurse / Hospital',
+            'role_medical_contact',
+          ),
           number: profile.medicalContactNumber,
         ),
     ];
@@ -312,13 +346,22 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     }).toList();
   }
 
+  String _localizedContactRole(String label, String defaultLabel, String key) {
+    final trimmedLabel = label.trim();
+    if (trimmedLabel.isEmpty ||
+        trimmedLabel.toLowerCase() == defaultLabel.toLowerCase()) {
+      return context.tr(key);
+    }
+    return trimmedLabel;
+  }
+
   Future<void> _sendCheckIn({
     required List<({String name, String role, String number})> contacts,
     required String status,
     required String category,
   }) async {
     if (contacts.isEmpty) {
-      _showCheckInMessage('Add a trusted contact in Profile first.');
+      _showCheckInMessage(context.tr('checkin_add_contact_first'));
       return;
     }
 
@@ -335,14 +378,20 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     }
     final timestamp = DateTime.now().toLocal().toIso8601String();
     final coords = location == null
-        ? 'Unknown'
+        ? context.tr('unknown_location')
         : '${location.latitude.toStringAsFixed(4)},${location.longitude.toStringAsFixed(4)}';
     final locationUrl = location == null
-        ? 'Unknown'
+        ? context.tr('unknown_location')
         : 'https://maps.google.com/?q=$coords';
-    final message =
-        'SilentHelp $status. Risk: $category. Time: $timestamp. '
-        'Location: $locationUrl. I am Deaf; please text me.';
+    final message = context.tr(
+      'checkin_sms_template',
+      namedArgs: {
+        'status': status,
+        'risk': category,
+        'time': timestamp,
+        'location': locationUrl,
+      },
+    );
 
     var sentCount = 0;
     var openedCount = 0;
@@ -357,16 +406,22 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
         if (result.status == 'sms_app_opened') openedCount++;
       }
       final summary = sentCount > 0
-          ? 'SMS sent to $sentCount of ${contacts.length} trusted contact(s).'
+          ? context.tr(
+              'checkin_sms_sent_count',
+              namedArgs: {
+                'sent': '$sentCount',
+                'total': '${contacts.length}',
+              },
+            )
           : openedCount > 0
-          ? 'SMS app opened. Review and send each prepared message.'
-          : 'Could not send the SMS. Check your contacts and try again.';
+          ? context.tr('checkin_sms_opened')
+          : context.tr('checkin_sms_failed');
       if (sentCount > 0 || openedCount > 0) {
         await HapticsService.strongConfirmation();
       }
       _showCheckInMessage(summary);
-    } catch (error) {
-      _showCheckInMessage('Could not send check-in: $error');
+    } catch (_) {
+      _showCheckInMessage(context.tr('checkin_send_error'));
     } finally {
       ref.read(emergencyProvider.notifier).setSendingSos(false);
     }
@@ -545,7 +600,12 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                               ),
                               SizedBox(height: 2.h),
                               Text(
-                                'Accuracy: ${emergencyState.currentLocation!.accuracy.toStringAsFixed(0)}m',
+                                context.tr(
+                                  'location_accuracy',
+                                  namedArgs: {
+                                    'meters': emergencyState.currentLocation!.accuracy.toStringAsFixed(0),
+                                  },
+                                ),
                                 style: AppTextStyles.caption.copyWith(
                                   color: AppColors.textMuted,
                                   fontSize: 10.sp,
@@ -556,7 +616,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                         else
                           Text(
                             emergencyState.isLocationLoading
-                                ? '📡 Getting your location...'
+                                ? context.tr('location_getting')
                                 : AppConstants.defaultLocationText,
                             style: AppTextStyles.bodySmall,
                           ),
@@ -581,7 +641,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
             OutlinedButton.icon(
               onPressed: () => context.go(AppConstants.routeTrustedCircle),
               icon: const Icon(Icons.group_outlined),
-              label: const Text('Manage Trusted Circle and escalation'),
+              label: Text(context.tr('manage_trusted_circle')),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.teal,
                 side: const BorderSide(color: AppColors.teal),
@@ -592,7 +652,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
             OutlinedButton.icon(
               onPressed: () => context.go(AppConstants.routeNearbyPlaces),
               icon: const Icon(Icons.map_outlined),
-              label: const Text('Find nearby support places'),
+              label: Text(context.tr('nearby_support_places')),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.teal,
                 side: const BorderSide(color: AppColors.teal),
@@ -613,7 +673,11 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                       profile.secondContactNumber.isNotEmpty)
                     ContactRow(
                       name: profile.secondContactLabel.isNotEmpty
-                          ? '${profile.secondContactLabel}: ${profile.secondContactName}'
+                          ? '${_localizedContactRole(
+                              profile.secondContactLabel,
+                              'Family / Teacher',
+                              'role_family_teacher',
+                            )}: ${profile.secondContactName}'
                           : profile.secondContactName,
                       number: profile.secondContactNumber,
                       onCall: () => _makeCall(profile.secondContactNumber),
@@ -622,20 +686,24 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                       profile.medicalContactNumber.isNotEmpty)
                     ContactRow(
                       name: profile.medicalContactLabel.isNotEmpty
-                          ? '${profile.medicalContactLabel}: ${profile.medicalContactName}'
+                          ? '${_localizedContactRole(
+                              profile.medicalContactLabel,
+                              'Doctor / Nurse / Hospital',
+                              'role_medical_contact',
+                            )}: ${profile.medicalContactName}'
                           : profile.medicalContactName,
                       number: profile.medicalContactNumber,
                       onCall: () => _makeCall(profile.medicalContactNumber),
                     ),
                   ContactRow(
-                    name: 'Police',
+                     name: context.tr('role_police'),
                     number: AppConstants.policeNumber,
                     onCall: () => _makeCall(AppConstants.policeNumber),
                   ),
                 ],
               ),
               loading: () => const CircularProgressIndicator(),
-              error: (err, stack) => Text('Error loading profile'),
+              error: (err, stack) => Text(context.tr('emergency_profile_error')),
             ),
 
             SizedBox(height: 32.h),
@@ -660,21 +728,33 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'SOS! I am Deaf (UgSL). Need help!',
+                    context.tr('sos_sms_intro'),
                     style: AppTextStyles.bodySmall.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   SizedBox(height: 8.h),
                   Text(
-                    'Loc: ${emergencyState.currentLocation?.address?.isNotEmpty == true ? emergencyState.currentLocation!.address! : 'Unknown location'}',
+                    context.tr(
+                      'location_preview_address',
+                      namedArgs: {
+                        'location': emergencyState.currentLocation?.address?.isNotEmpty == true
+                            ? emergencyState.currentLocation!.address!
+                            : context.tr('unknown_location'),
+                      },
+                    ),
                     style: AppTextStyles.bodySmall,
                   ),
                   SizedBox(height: 4.h),
                   Text(
                     emergencyState.currentLocation != null
-                        ? 'GPS: ${emergencyState.currentLocation!.latitude.toStringAsFixed(4)}, ${emergencyState.currentLocation!.longitude.toStringAsFixed(4)}'
-                        : 'GPS: Unknown',
+                        ? context.tr(
+                            'location_preview_gps',
+                            namedArgs: {
+                              'coordinates': '${emergencyState.currentLocation!.latitude.toStringAsFixed(4)}, ${emergencyState.currentLocation!.longitude.toStringAsFixed(4)}',
+                            },
+                          )
+                        : context.tr('location_preview_gps_unknown'),
                     style: AppTextStyles.bodySmall,
                   ),
                   SizedBox(height: 8.h),
@@ -694,7 +774,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                 border: Border.all(color: AppColors.border),
               ),
               child: Text(
-                '🔒 Your location is only used during emergencies. We do not track you continuously.',
+                context.tr('emergency_location_privacy'),
                 style: AppTextStyles.caption.copyWith(
                   color: AppColors.textMuted,
                 ),
@@ -728,7 +808,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Ready to send emergency alert',
+                  context.tr('sos_ready_to_send'),
                   style: AppTextStyles.labelSmall.copyWith(
                     color: AppColors.teal,
                     fontWeight: FontWeight.w600,
@@ -737,9 +817,8 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                 SizedBox(height: 4.h),
                 Text(
                   state.currentLocation != null
-                      ? '📍 Location ready '
-                            '${state.isLocationAccurate ? '🟢 (Accurate)' : '🟡 (Approximate)'}'
-                      : '📡 Getting location...',
+                      ? '${context.tr('location_ready')} (${state.isLocationAccurate ? context.tr('location_accurate') : context.tr('location_approximate')})'
+                      : context.tr('location_getting'),
                   style: AppTextStyles.caption.copyWith(
                     color: AppColors.textMuted,
                   ),
@@ -775,7 +854,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '✅  SOS sent successfully',
+                  context.tr('sos_sent_successfully'),
                   style: AppTextStyles.labelSmall.copyWith(
                     color: const Color(0xFF4CAF50),
                     fontWeight: FontWeight.w700,
@@ -784,7 +863,10 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                 if (timeStr.isNotEmpty) ...[
                   SizedBox(height: 4.h),
                   Text(
-                    'Dispatched at $timeStr',
+                    context.tr(
+                      'sos_dispatched_at',
+                      namedArgs: {'time': timeStr},
+                    ),
                     style: AppTextStyles.caption.copyWith(
                       color: AppColors.textMuted,
                     ),
@@ -820,7 +902,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
                       duration: const Duration(seconds: 3),
                       backgroundColor: AppColors.red,
                       action: SnackBarAction(
-                        label: 'Edit profile',
+                        label: context.tr('edit_profile'),
                         textColor: Colors.white,
                         onPressed: () {
                           context.go(AppConstants.routeProfile);
@@ -939,8 +1021,8 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     if (profile == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile is still loading. Please try again.'),
+          SnackBar(
+            content: Text(context.tr('emergency_profile_loading')),
           ),
         );
       }
@@ -951,43 +1033,51 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Send SOS to'),
+          title: Text(context.tr('sos_choose_recipient')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                title: const Text('Primary emergency contact'),
+                title: Text(context.tr('role_primary_contact')),
                 subtitle: Text(
                   profile.emContactName.isNotEmpty
                       ? profile.emContactName
-                      : 'Primary contact',
+                      : context.tr('role_primary_contact'),
                 ),
                 onTap: () => Navigator.of(dialogContext).pop('primary'),
               ),
               if (profile.secondContactName.isNotEmpty ||
                   profile.secondContactNumber.isNotEmpty)
                 ListTile(
-                  title: const Text('Family / teacher'),
+                  title: Text(context.tr('role_family_teacher')),
                   subtitle: Text(
                     profile.secondContactName.isNotEmpty
                         ? profile.secondContactName
-                        : 'Family / teacher',
+                        : _localizedContactRole(
+                            profile.secondContactLabel,
+                            'Family / Teacher',
+                            'role_family_teacher',
+                          ),
                   ),
                   onTap: () => Navigator.of(dialogContext).pop('family'),
                 ),
               if (profile.medicalContactName.isNotEmpty ||
                   profile.medicalContactNumber.isNotEmpty)
                 ListTile(
-                  title: const Text('Doctor / nurse / hospital'),
+                  title: Text(context.tr('role_medical_contact')),
                   subtitle: Text(
                     profile.medicalContactName.isNotEmpty
                         ? profile.medicalContactName
-                        : 'Medical contact',
+                        : _localizedContactRole(
+                            profile.medicalContactLabel,
+                            'Doctor / Nurse / Hospital',
+                            'role_medical_contact',
+                          ),
                   ),
                   onTap: () => Navigator.of(dialogContext).pop('medical'),
                 ),
               ListTile(
-                title: const Text('Police'),
+                title: Text(context.tr('role_police')),
                 subtitle: const Text('+256 999'),
                 onTap: () => Navigator.of(dialogContext).pop('police'),
               ),
@@ -1006,36 +1096,40 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     try {
       final emergencyNotifier = ref.read(emergencyProvider.notifier);
       String emContactNumber = '+256 700 123 456';
-      String recipientName = 'Primary contact';
+      String recipientName = context.tr('role_primary_contact');
 
       switch (recipient) {
         case 'primary':
           emContactNumber = profile.emContactNumber;
           recipientName = profile.emContactName.isNotEmpty
               ? profile.emContactName
-              : 'Primary contact';
+              : context.tr('role_primary_contact');
           break;
         case 'family':
           emContactNumber = profile.secondContactNumber;
-          recipientName = profile.secondContactLabel.isNotEmpty
-              ? profile.secondContactLabel
-              : 'Family / teacher';
+          recipientName = _localizedContactRole(
+            profile.secondContactLabel,
+            'Family / Teacher',
+            'role_family_teacher',
+          );
           break;
         case 'medical':
           emContactNumber = profile.medicalContactNumber;
-          recipientName = profile.medicalContactLabel.isNotEmpty
-              ? profile.medicalContactLabel
-              : 'Doctor / nurse / hospital';
+          recipientName = _localizedContactRole(
+            profile.medicalContactLabel,
+            'Doctor / Nurse / Hospital',
+            'role_medical_contact',
+          );
           break;
         case 'police':
           emContactNumber = AppConstants.policeNumber;
-          recipientName = 'Police';
+          recipientName = context.tr('role_police');
           break;
         default:
           emContactNumber = profile.emContactNumber;
           recipientName = profile.emContactName.isNotEmpty
               ? profile.emContactName
-              : 'Primary contact';
+              : context.tr('role_primary_contact');
       }
 
       if (emContactNumber.trim().isEmpty) {
@@ -1043,7 +1137,10 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Please add a phone number for $recipientName first.',
+                context.tr(
+                  'sos_missing_contact_number',
+                  namedArgs: {'contact': recipientName},
+                ),
               ),
               backgroundColor: AppColors.red,
               duration: const Duration(seconds: 3),
@@ -1090,10 +1187,10 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
       // Prepare location text and coordinates
       final address = currentLocation?.address?.isNotEmpty == true
           ? currentLocation!.address!
-          : 'Unknown location';
+          : context.tr('unknown_location');
       final coordinates = currentLocation != null
           ? '${currentLocation.latitude.toStringAsFixed(4)}, ${currentLocation.longitude.toStringAsFixed(4)}'
-          : 'Unknown';
+          : context.tr('unknown_location');
 
       // Log: SOS message prepared
       await ref
@@ -1125,8 +1222,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
             ),
           );
 
-      final bool wasSent =
-          sendResult.sent || sendResult.status == 'sms_app_opened';
+      final bool wasSent = sendResult.sent;
       if (wasSent) {
         setState(() => _sentAt = DateTime.now());
         ref.read(emergencyProvider.notifier).setSosSent(true);
@@ -1138,7 +1234,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('✅ SOS delivered successfully'),
+              content: Text(context.tr('sos_delivery_confirmed')),
               backgroundColor: const Color(0xFF4CAF50),
               duration: const Duration(seconds: 4),
             ),
@@ -1148,7 +1244,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('✅ SOS sent. Delivery not confirmed yet.'),
+              content: Text(context.tr('sos_delivery_unconfirmed')),
               backgroundColor: const Color(0xFF4CAF50),
               duration: const Duration(seconds: 4),
             ),
@@ -1158,9 +1254,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text(
-                'SMS app opened. Please send the SOS message.',
-              ),
+              content: Text(context.tr('sos_sms_app_opened')),
               backgroundColor: const Color(0xFFFFA000),
               duration: const Duration(seconds: 4),
             ),
@@ -1170,14 +1264,14 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
 
       // Location continues refreshing in the background for UI display only.
       // No further SMS is sent — exactly one SOS message per tap.
-    } catch (e) {
+    } catch (_) {
       // Error vibration
       await HapticsService.selectionClick();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(context.tr('sos_send_error')),
             backgroundColor: AppColors.red,
             duration: const Duration(seconds: 4),
           ),
@@ -1195,39 +1289,30 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
     String address,
     String coordinates,
   ) async {
-    // Keep the message inside a single SMS (<=160 chars, GSM-7 only).
-    // Non-GSM-7 chars (e.g. the em-dash) force UCS-2 encoding which cuts the
-    // per-part limit to 70 chars and caused 4 charged messages per SOS tap.
-    // Use only plain ASCII and truncate the address if it is unusually long.
+    // Keep the address compact; localized text may require multipart SMS.
     final safeAddress = address.length > 60
         ? '${address.substring(0, 57)}...'
         : address;
 
-    // Max length check (all ASCII/GSM-7, ~133 chars worst case):
-    //   35  "SOS! I am Deaf (UgSL). Need help!\n"
-    //   65  "Loc: " + 60-char address
-    //    1  "\n"
-    //   20  "GPS: " + 15-char coords
-    //    1  "\n"
-    //   11  "-SilentHelp"
-    //  ----
-    //  133  < 160 single-SMS limit
     final message =
-        'SOS! I am Deaf (UgSL). Need help!\n'
-        'Loc: $safeAddress\n'
-        'GPS: $coordinates\n'
-        '-SilentHelp';
+        context.tr(
+          'sos_sms_template',
+          namedArgs: {
+            'location': safeAddress,
+            'coordinates': coordinates,
+          },
+        );
 
     try {
       return await SmsService.sendSms(
         phone: phoneNumber.isNotEmpty ? phoneNumber : '',
         message: message,
       );
-    } on SmsPermissionException catch (e) {
+    } on SmsPermissionException {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.message),
+            content: Text(context.tr('sos_sms_permission_error')),
             backgroundColor: AppColors.red,
             duration: const Duration(seconds: 5),
           ),

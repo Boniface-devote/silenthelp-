@@ -29,7 +29,7 @@ class _AbuseReportScreenState extends ConsumerState<AbuseReportScreen> {
   final _detailsController = TextEditingController();
   String? _category;
   String? _recipientNumber;
-  bool _includeDetails = true;
+  bool _includeDetails = false;
   bool _sending = false;
 
   @override
@@ -57,9 +57,9 @@ class _AbuseReportScreenState extends ConsumerState<AbuseReportScreen> {
           if (contacts.isEmpty) {
             return _noContacts(context);
           }
-          if (_recipientNumber == null ||
+          if (_recipientNumber != null &&
               !contacts.any((contact) => contact.number == _recipientNumber)) {
-            _recipientNumber = contacts.first.number;
+            _recipientNumber = null;
           }
 
           return ListView(
@@ -122,6 +122,7 @@ class _AbuseReportScreenState extends ConsumerState<AbuseReportScreen> {
                 decoration: InputDecoration(
                   filled: true,
                   labelText: context.tr('report_recipient_label'),
+                  hintText: context.tr('report_recipient_hint'),
                 ),
                 items: contacts
                     .map(
@@ -304,8 +305,12 @@ class _AbuseReportScreenState extends ConsumerState<AbuseReportScreen> {
       } else {
         _showMessage(result.errorMessage ?? context.tr('report_sms_failed'));
       }
-    } catch (error) {
-      if (mounted) _showMessage('${context.tr('report_send_error')}: $error');
+    } on SmsPermissionException {
+      if (mounted) {
+        _showMessage(context.tr('report_sms_permission_error'));
+      }
+    } catch (_) {
+      if (mounted) _showMessage(context.tr('report_send_error'));
     } finally {
       if (mounted) setState(() => _sending = false);
     }

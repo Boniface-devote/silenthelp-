@@ -54,6 +54,15 @@ class LanguageBar extends ConsumerWidget {
                   context.setLocale(const Locale('lg'));
                 },
               ),
+              SizedBox(width: 8.w),
+              _LanguagePill(
+                label: 'FR',
+                isActive: currentLocale.languageCode == 'fr',
+                onTap: () {
+                  ref.read(localeProvider.notifier).state = const Locale('fr');
+                  context.setLocale(const Locale('fr'));
+                },
+              ),
             ],
           ),
         ],

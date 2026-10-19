@@ -44,6 +44,7 @@ class SilentHelpApp extends ConsumerWidget {
           'ja',
           'zh',
           'sw',
+          'fr',
         ];
 
         // If current locale is not supported by Material, fallback to English for Material
@@ -64,7 +65,12 @@ class SilentHelpApp extends ConsumerWidget {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          supportedLocales: const [Locale('en'), Locale('sw'), Locale('lg')],
+          supportedLocales: const [
+            Locale('en'),
+            Locale('sw'),
+            Locale('lg'),
+            Locale('fr'),
+          ],
           locale: materialLocale, // Use fallback locale for Material
           routerConfig: appRouter,
           builder: (context, child) {

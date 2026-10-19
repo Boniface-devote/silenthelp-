@@ -7,8 +7,8 @@ import 'package:silenthelp/features/settings/profile_screen.dart';
 void main() {
   group('contact picker fallback', () {
     test('keeps entered emergency contact values intact', () {
-      const name = 'Sarah Kato';
-      const phone = '+256700111222';
+      const name = '';
+      const phone = '+256xxxxxxxxx';
 
       expect(name.isNotEmpty, isTrue);
       expect(phone.isNotEmpty, isTrue);
